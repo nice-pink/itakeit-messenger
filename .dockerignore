@@ -12,3 +12,4 @@ slack-app-manifest.yaml
 .git/
 cover.out
 .DS_Store
+examples/

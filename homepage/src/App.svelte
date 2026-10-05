@@ -48,7 +48,7 @@ sources:
 
 <header class="nav">
   <div class="wrap row">
-    <a class="brand" href="#top"><img src="./turtle-parrot.png" alt="" /> itakeit-messager</a>
+    <a class="brand" href="#top"><img src="./turtle-post.png" alt="" /> itakeit-messager</a>
     <nav>
       <a href="#how">How it works</a>
       <a href="#setup">Setup</a>
@@ -62,7 +62,7 @@ sources:
 <main id="top">
   <section class="hero wrap">
     <div class="pitch">
-      <img class="turtle" src="./turtle-parrot.png" alt="pixel parrot riding the itakeit turtle" width="400" height="340" />
+      <img class="turtle" src="./turtle-post.png" alt="pixel turtle in a postal cap carrying an envelope" width="1268" height="1240" />
       <h1>The tasks in your messages. <span>Posted to itakeit.</span></h1>
       <p class="lead"><b>itakeit-messager</b> reads messages from Slack channels, HTTP and standard input, asks Claude whether each contains a task, and posts the tasks to the channel <a href={itakeit}>itakeit</a> serves. It also sets reminders in the thread when a message asks for one. Nobody has to copy a request into the task channel by hand.</p>
       <div class="cta">
@@ -198,7 +198,7 @@ sources:
 
 <footer>
   <div class="wrap row">
-    <span><img src="./turtle-parrot.png" alt="" /> itakeit-messager</span>
+    <span><img src="./turtle-post.png" alt="" /> itakeit-messager</span>
     <div>Needs <a href={itakeit}>itakeit</a>. Pairs with <a href={agent}>itakeit-agent</a>.</div>
     <div>built by <a href="https://nice.pink">nice-pink</a></div>
   </div>

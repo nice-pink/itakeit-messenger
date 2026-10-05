@@ -29,6 +29,8 @@ A message is classified once: redelivery of the same Slack message or the same H
 docker run -d --name itakeit-messager --restart unless-stopped -e MESSAGER_SLACK_BOT_TOKEN -e MESSAGER_SLACK_APP_TOKEN -e CLAUDE_CODE_OAUTH_TOKEN -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messager:latest
 ```
 
+`examples/` has a Docker Compose file and a Kubernetes kustomization, both with a read-only root filesystem and writable `/tmp` and `/home/node`, which the Claude CLI needs on every call.
+
 | Scope | Used for |
 |---|---|
 | `channels:history`, `groups:history` | receiving messages of channels it is in |

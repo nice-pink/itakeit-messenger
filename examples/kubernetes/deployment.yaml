@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: itakeit-messager
+  labels:
+    app: itakeit-messager
+spec:
+  # One instance per Slack app: Slack delivers each Socket Mode event to only one
+  # open connection, so a second replica misses events, and the two would post
+  # the same task twice when their seen sets differ. Recreate stops the old pod
+  # before the new one starts.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: itakeit-messager
+  template:
+    metadata:
+      labels:
+        app: itakeit-messager
+    spec:
+      # The messager makes no Kubernetes calls.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000 # node, the image's user
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: messager
+          image: ghcr.io/nice-pink/itakeit-messager:latest
+          # Socket Mode makes only outbound connections: no port unless the http
+          # source is on (http.yaml).
+          envFrom:
+            - secretRef:
+                name: itakeit-messager
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            # The Claude CLI writes its state to HOME and /tmp on every call.
+            - name: home
+              mountPath: /home/node
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              # Each classification is a claude CLI run, a node process;
+              # max_parallel in config.yaml bounds how many run at once.
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+      volumes:
+        - name: config
+          configMap:
+            name: itakeit-messager-config
+        - name: home
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

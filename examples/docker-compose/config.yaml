@@ -1,0 +1,23 @@
+# Full reference: config.example.yaml in the repo root.
+# ID of the channel itakeit serves. Invite the messager's app to it.
+target_channel: C0123456789
+backend: claude-code
+criteria: |
+  Requests to people ("can someone look at ...", "we need ..."), bug reports,
+  and questions that need a person to investigate. Not tasks: deploy notices
+  and alerts that resolved themselves.
+reminders: true
+timezone: Europe/Berlin
+max_parallel: 2
+min_chars: 12
+recover_messages: 200
+sources:
+  # Every channel the app is in, except the target channel.
+  slack:
+    enabled: true
+  http:
+    enabled: false
+    # A container does not publish 127.0.0.1: use 0.0.0.0:8080 and the ports
+    # block in compose.yaml.
+    listen: 0.0.0.0:8080
+  stdin: false

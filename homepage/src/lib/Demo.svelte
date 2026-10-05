@@ -74,7 +74,7 @@
             {/if}
             {#if s.reminder}
               <div class="msg">
-                <div class="avatar agent"><img src="./turtle-parrot.png" alt="" /></div>
+                <div class="avatar agent"><img src="./turtle-post.png" alt="" /></div>
                 <div class="body">
                   <div class="meta"><b>itakeit-messager</b> <span class="app">APP</span> <span>scheduled</span></div>
                   <p>{s.reminder}</p>
@@ -89,7 +89,7 @@
             <div class="target">
               <div class="meta"><b># itakeit</b> <span>top-level message</span></div>
               <div class="msg inner">
-                <div class="avatar agent"><img src="./turtle-parrot.png" alt="" /></div>
+                <div class="avatar agent"><img src="./turtle-post.png" alt="" /></div>
                 <div class="body">
                   <div class="meta"><b>itakeit-messager</b> <span class="app">APP</span></div>
                   <p><b>{s.post.title}</b><br />{s.post.text}<br /><span class="from">From {s.post.from}</span></p>

@@ -1,0 +1,17 @@
+# itakeit-messager in Kubernetes, in the namespace itakeit's examples use. See
+# ../README.md. Build with `kubectl kustomize examples/kubernetes`, apply with
+# `kubectl apply -k`.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: itakeit
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  # The http source (../README.md): a Service for POST /messages.
+  # - http.yaml
+# The name gets a content hash, so editing config.yaml rolls the pod. It holds
+# no secrets: the tokens are in the Secret ../README.md creates.
+configMapGenerator:
+  - name: itakeit-messager-config
+    files:
+      - config.yaml

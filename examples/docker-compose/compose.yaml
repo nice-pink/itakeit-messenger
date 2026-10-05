@@ -1,0 +1,31 @@
+# Local itakeit-messager, built from this checkout.
+#   cp .env.example .env    # fill in the Slack tokens and the Claude token
+#   docker compose up --build
+# itakeit itself runs separately (its repository has compose files); the messager
+# only needs it in target_channel. For the published image, replace build with
+#   image: ghcr.io/nice-pink/itakeit-messager:latest
+name: itakeit-messager
+services:
+  messager:
+    build: ../..
+    restart: unless-stopped
+    # Tokens come from .env through env_file, not ${VAR} interpolation, which would
+    # let tokens exported in the shell win over the file.
+    env_file: .env
+    # The binary writes nothing, but the Claude CLI writes its state to HOME and
+    # /tmp on every call. A tmpfs is owned by root and the image runs as node
+    # (uid 1000), so HOME gets mode 1777. It must be written as the YAML octal
+    # 0o1777: a plain 1777 is read as decimal and the CLI silently cannot write
+    # its state, and a quoted "1777" is rejected by compose.
+    read_only: true
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - type: tmpfs
+        target: /tmp
+      - type: tmpfs
+        target: /home/node
+        tmpfs:
+          mode: 0o1777
+    # Only for the http source with listen: 0.0.0.0:8080 in config.yaml:
+    # ports:
+    #   - "127.0.0.1:8080:8080"

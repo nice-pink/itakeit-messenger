@@ -21,7 +21,7 @@ It runs as one Docker container on Claude, through the Claude Code CLI and its l
 3. Invite it to target_channel and to every channel it should read.
 4. Copy config.example.yaml to config.yaml and set target_channel and the sources.
 5. Log in to Claude: claude auth login, or CLAUDE_CODE_OAUTH_TOKEN from claude setup-token, or backend: api with ANTHROPIC_API_KEY.
-6. Run the published image ghcr.io/nice-pink/itakeit-messager with the tokens and the config mounted, or build it from the repository with ./build.
+6. Run the published image ghcr.io/nice-pink/itakeit-messager with the tokens and the config mounted, or build it from the repository with ./build. The repository's examples/ directory has a Docker Compose file and a Kubernetes kustomization.
 
 ## Links
 
