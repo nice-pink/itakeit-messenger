@@ -25,6 +25,15 @@ criteria: |
   and questions that need a person to investigate. Not tasks: deploy notices
   and alerts that resolved themselves.
 
+# Background for the model, sent with every message (at most 8000 characters):
+# how to treat kinds of messages and what a task about them should say. Unlike
+# criteria it also applies with tasks off. Alerts from other bots only arrive with
+# sources.slack.include_bots: true, or through the http source.
+# knowledge: |
+#   Grafana alerts (posted by the Grafana bot, titled [FIRING]) are tasks. Title
+#   them "Check incident: <alert name>" and put the affected service, the
+#   severity and the alert's link in the summary. [RESOLVED] notices are not tasks.
+
 # When a message asks to be reminded at a specific time ("remind me on Friday to
 # send the invoice"), the messager schedules a reply under that message at the due
 # time, from its own bot, mentioning the author. A message can be a task, a

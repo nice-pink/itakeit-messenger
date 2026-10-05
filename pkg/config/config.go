@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -19,6 +20,9 @@ const (
 	BackendClaudeCode = "claude-code"
 	BackendAPI        = "api"
 )
+
+// MaxKnowledge bounds knowledge, which is part of the system prompt of every call.
+const MaxKnowledge = 8000
 
 type Config struct {
 	// Tasks makes the messager post tasks to TargetChannel. Without it the messager only
@@ -31,6 +35,10 @@ type Config struct {
 	Model         string `yaml:"model"`
 	// Criteria extends the built-in definition of a task with what counts in this team.
 	Criteria string `yaml:"criteria"`
+	// Knowledge is background for the model: how to treat kinds of messages (a Grafana
+	// alert, a form) and how to word the task. Unlike Criteria it also applies when
+	// Tasks is off.
+	Knowledge string `yaml:"knowledge"`
 	// Env lists extra environment variables the claude CLI may see.
 	Env         []string `yaml:"env"`
 	MaxParallel int      `yaml:"max_parallel"`
@@ -109,6 +117,9 @@ func (c *Config) validate() error {
 	}
 	if _, err := time.LoadLocation(c.Timezone); err != nil {
 		errs = append(errs, fmt.Errorf("timezone %q: use an IANA name such as Europe/Berlin", c.Timezone))
+	}
+	if n := utf8.RuneCountInString(c.Knowledge); n > MaxKnowledge {
+		errs = append(errs, fmt.Errorf("knowledge is %d characters, at most %d: it is sent with every message", n, MaxKnowledge))
 	}
 	if c.MinChars < 0 {
 		errs = append(errs, errors.New("min_chars must not be negative"))

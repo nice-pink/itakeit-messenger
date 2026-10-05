@@ -6,6 +6,11 @@ criteria: |
   Requests to people ("can someone look at ...", "we need ..."), bug reports,
   and questions that need a person to investigate. Not tasks: deploy notices
   and alerts that resolved themselves.
+knowledge: |
+  Grafana alerts are tasks (they need sources.slack.include_bots: true, or the
+  http source). Title them "Check incident: <alert name>" and put the affected
+  service, the severity and the alert's link in the summary. [RESOLVED] notices
+  are not tasks.
 reminders: true
 timezone: Europe/Berlin
 max_parallel: 2

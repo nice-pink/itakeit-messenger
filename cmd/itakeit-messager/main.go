@@ -71,7 +71,7 @@ func run(cfgPath string, debug bool) error {
 	}
 	slog.Info("authenticated", "team", auth.Team, "user", auth.UserID, "tasks", cfg.Tasks, "reminders", cfg.Reminders, "target_channel", cfg.TargetChannel, "backend", cfg.Backend, "model", cfg.Model)
 
-	cl := classify.New(ask, cfg.Criteria).WithSecrets(secrets...)
+	cl := classify.New(ask, cfg.Criteria).WithKnowledge(cfg.Knowledge).WithSecrets(secrets...)
 	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	refused, err := cl.Probe(probeCtx)
 	cancel()

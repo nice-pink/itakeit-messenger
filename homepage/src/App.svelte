@@ -116,7 +116,7 @@ sources:
       </li>
       <li>
         <h3>Write config.yaml</h3>
-        <p>Start from <a href="{repo}/blob/main/config.example.yaml">config.example.yaml</a>. <code>target_channel</code> is the ID of the itakeit channel. <code>criteria</code> sharpens what counts as a task for your team. <code>tasks</code> and <code>reminders</code> switch the two outputs independently; at least one must be on.</p>
+        <p>Start from <a href="{repo}/blob/main/config.example.yaml">config.example.yaml</a>. <code>target_channel</code> is the ID of the itakeit channel. <code>criteria</code> sharpens what counts as a task for your team. <code>knowledge</code> is optional background about your tools, such as how to treat a Grafana alert. <code>tasks</code> and <code>reminders</code> switch the two outputs independently; at least one must be on.</p>
         <Code code={config} label="config.yaml" />
       </li>
       <li>
@@ -251,8 +251,9 @@ sources:
   summary { cursor: pointer; font-weight: 600; color: var(--green-dark); }
   .note { max-width: 820px; background: #fff3e6; border: 2px solid var(--ink); border-left: 8px solid var(--orange); padding: 1rem 1.2rem; }
 
-  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2rem; align-items: start; }
   .split > :global(.code) { margin-top: 0; }
+  .split > * { min-width: 0; }
   .points { max-width: 820px; }
   .points p { margin: 0 0 1rem; }
   .cost { margin: 1.2rem 0 0; }
