@@ -57,10 +57,17 @@ func run(cfgPath string, debug bool) error {
 	}
 
 	var ask classify.Ask
-	secrets := []string{botToken, appToken, os.Getenv("MESSAGER_HTTP_TOKEN"), os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_AUTH_TOKEN")}
-	if cfg.Backend == config.BackendAPI {
+	secrets := []string{botToken, appToken, os.Getenv("MESSAGER_HTTP_TOKEN"), os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_AUTH_TOKEN"), os.Getenv("LANGDOCK_API_KEY")}
+	switch cfg.Backend {
+	case config.BackendAPI:
 		ask = classify.NewAPI(cfg.Model)
-	} else {
+	case config.BackendLangdock:
+		key := os.Getenv("LANGDOCK_API_KEY")
+		if key == "" {
+			return errors.New("backend langdock needs LANGDOCK_API_KEY")
+		}
+		ask = classify.NewLangdock(cfg.LangdockRegion, cfg.Model, key)
+	default:
 		email, err := claudeLogin(ctx, cfg.ClaudeBin, cfg.Env)
 		if err != nil {
 			return err

@@ -17,18 +17,20 @@ func TestParse(t *testing.T) {
 
 func TestParseErrors(t *testing.T) {
 	for name, tc := range map[string]struct{ yaml, want string }{
-		"name not id":    {"target_channel: general\nsources: {stdin: true}", "channel ID"},
-		"no source":      {"target_channel: C0123456789", "at least one source"},
-		"target listed":  {"target_channel: C0123456789\nsources: {slack: {enabled: true, channels: [C0123456789]}}", "read back"},
-		"unknown key":    {"target_channel: C0123456789\nsources: {stdin: true}\nchanel: x", "chanel"},
-		"nothing on":     {"target_channel: C0123456789\ntasks: false\nreminders: false\nsources: {stdin: true}", "tasks, reminders or both"},
-		"http no tasks":  {"tasks: false\nsources: {http: {enabled: true}}", "only the slack source"},
-		"negative min":   {"target_channel: C0123456789\nmin_chars: -5\nsources: {stdin: true}", "min_chars"},
-		"recover cap":    {"target_channel: C0123456789\nrecover_messages: 5000\nsources: {stdin: true}", "999"},
-		"token in env":   {"target_channel: C0123456789\nenv: [MESSAGER_SLACK_BOT_TOKEN]\nsources: {stdin: true}", "MESSAGER_SLACK_BOT_TOKEN"},
-		"bad timezone":   {"target_channel: C0123456789\ntimezone: Mars/Base\nsources: {stdin: true}", "timezone"},
-		"long knowledge": {"target_channel: C0123456789\nknowledge: " + strings.Repeat("x", MaxKnowledge+1) + "\nsources: {stdin: true}", "knowledge"},
-		"bad backend":    {"target_channel: C0123456789\nbackend: gpt\nsources: {stdin: true}", "backend"},
+		"name not id":       {"target_channel: general\nsources: {stdin: true}", "channel ID"},
+		"no source":         {"target_channel: C0123456789", "at least one source"},
+		"target listed":     {"target_channel: C0123456789\nsources: {slack: {enabled: true, channels: [C0123456789]}}", "read back"},
+		"unknown key":       {"target_channel: C0123456789\nsources: {stdin: true}\nchanel: x", "chanel"},
+		"nothing on":        {"target_channel: C0123456789\ntasks: false\nreminders: false\nsources: {stdin: true}", "tasks, reminders or both"},
+		"http no tasks":     {"tasks: false\nsources: {http: {enabled: true}}", "only the slack source"},
+		"negative min":      {"target_channel: C0123456789\nmin_chars: -5\nsources: {stdin: true}", "min_chars"},
+		"recover cap":       {"target_channel: C0123456789\nrecover_messages: 5000\nsources: {stdin: true}", "999"},
+		"token in env":      {"target_channel: C0123456789\nenv: [MESSAGER_SLACK_BOT_TOKEN]\nsources: {stdin: true}", "MESSAGER_SLACK_BOT_TOKEN"},
+		"langdock no model": {"target_channel: C0123456789\nbackend: langdock\nsources: {stdin: true}", "model is required"},
+		"bad region":        {"target_channel: C0123456789\nbackend: langdock\nmodel: m\nlangdock_region: asia\nsources: {stdin: true}", "langdock_region"},
+		"bad timezone":      {"target_channel: C0123456789\ntimezone: Mars/Base\nsources: {stdin: true}", "timezone"},
+		"long knowledge":    {"target_channel: C0123456789\nknowledge: " + strings.Repeat("x", MaxKnowledge+1) + "\nsources: {stdin: true}", "knowledge"},
+		"bad backend":       {"target_channel: C0123456789\nbackend: gpt\nsources: {stdin: true}", "backend"},
 	} {
 		if _, err := Parse([]byte(tc.yaml)); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%s: err = %v, want %q", name, err, tc.want)

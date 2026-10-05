@@ -22,7 +22,7 @@ A message is classified once: redelivery of the same Slack message or the same H
 1. Create a Slack app from `slack-app-manifest.yaml`, generate an app-level token with `connections:write` (`MESSAGER_SLACK_APP_TOKEN`, only needed for the Slack source) and install it (`MESSAGER_SLACK_BOT_TOKEN`).
 2. Invite it to `target_channel` and to every channel it should read. It must be a different app from itakeit and itakeit-agent.
 3. Copy `config.example.yaml` to `config.yaml`, set `target_channel` and enable sources. `tasks` (default on) and `reminders` (default on) choose what the messager creates. With `tasks: false` it only sets reminders: `target_channel` is optional, nothing is posted to it, and only the `slack` source is allowed, since a reminder is a reply under a Slack message. At least one of the two must be on.
-4. Log in to Claude: `claude auth login`, or `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (`backend: claude-code`), or `ANTHROPIC_API_KEY` (`backend: api`). The messager checks the CLI login at start and refuses to run without it.
+4. Log in to Claude: `claude auth login`, or `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (`backend: claude-code`), or `ANTHROPIC_API_KEY` (`backend: api`), or `LANGDOCK_API_KEY` with `backend: langdock`, `model` set to a model ID of your workspace and `langdock_region: eu` or `us` (Langdock's OpenAI-compatible endpoint, any model). The messager checks the CLI login at start and refuses to run without it.
 5. Run it: `./build && MESSAGER_SLACK_BOT_TOKEN=xoxb-... MESSAGER_SLACK_APP_TOKEN=xapp-... ./bin/itakeit-messager -config config.yaml`, or the image:
 
 ```

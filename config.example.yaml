@@ -11,10 +11,14 @@ target_channel: C0123456789
 # claude-code (default): the Claude Code CLI with its login (`claude auth login`, or
 #   CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`). Counts against that plan.
 # api: the Messages API with ANTHROPIC_API_KEY. Billed to the Console organization.
+# langdock: Langdock's OpenAI-compatible API with LANGDOCK_API_KEY and any model of the
+#   workspace (model: a name from its model list). langdock_region: eu (default) or us.
 backend: claude-code
+# The claude executable to run. Only backend claude-code reads it; api and langdock ignore it.
 claude_bin: claude
+# langdock_region: eu
 
-# Default sonnet for claude-code (a CLI alias) and claude-sonnet-5-5 for api.
+# Default sonnet for claude-code (a CLI alias) and claude-sonnet-5-5 for api. Required for langdock.
 # Every message that passes min_chars costs one call, so a small model fits.
 # model: sonnet
 

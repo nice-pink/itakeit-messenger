@@ -19,6 +19,7 @@ import (
 const (
 	BackendClaudeCode = "claude-code"
 	BackendAPI        = "api"
+	BackendLangdock   = "langdock"
 )
 
 // MaxKnowledge bounds knowledge, which is part of the system prompt of every call.
@@ -32,7 +33,9 @@ type Config struct {
 	TargetChannel string `yaml:"target_channel"`
 	Backend       string `yaml:"backend"`
 	ClaudeBin     string `yaml:"claude_bin"`
-	Model         string `yaml:"model"`
+	// LangdockRegion is eu or us, the region of the Langdock workspace (backend langdock).
+	LangdockRegion string `yaml:"langdock_region"`
+	Model          string `yaml:"model"`
 	// Criteria extends the built-in definition of a task with what counts in this team.
 	Criteria string `yaml:"criteria"`
 	// Knowledge is background for the model: how to treat kinds of messages (a Grafana
@@ -93,10 +96,11 @@ func Parse(raw []byte) (*Config, error) {
 	}
 	c.Backend = cmp.Or(c.Backend, BackendClaudeCode)
 	c.ClaudeBin = cmp.Or(c.ClaudeBin, "claude")
+	c.LangdockRegion = cmp.Or(c.LangdockRegion, "eu")
 	c.Timezone = cmp.Or(c.Timezone, "UTC")
 	c.Sources.HTTP.Listen = cmp.Or(c.Sources.HTTP.Listen, "127.0.0.1:8080")
 	if c.Model == "" {
-		c.Model = map[string]string{BackendClaudeCode: "sonnet", BackendAPI: "claude-sonnet-5-5"}[c.Backend]
+		c.Model = map[string]string{BackendClaudeCode: "sonnet", BackendAPI: "claude-sonnet-5-5", BackendLangdock: ""}[c.Backend]
 	}
 	return &c, c.validate()
 }
@@ -112,8 +116,14 @@ func (c *Config) validate() error {
 	if !c.Tasks && (c.Sources.HTTP.Enabled || c.Sources.Stdin) {
 		errs = append(errs, errors.New("with tasks off only the slack source works: reminders are replies under a Slack message, and http and stdin messages have none"))
 	}
-	if c.Backend != BackendClaudeCode && c.Backend != BackendAPI {
-		errs = append(errs, fmt.Errorf("backend %q: use %s or %s", c.Backend, BackendClaudeCode, BackendAPI))
+	if !slices.Contains([]string{BackendClaudeCode, BackendAPI, BackendLangdock}, c.Backend) {
+		errs = append(errs, fmt.Errorf("backend %q: use %s, %s or %s", c.Backend, BackendClaudeCode, BackendAPI, BackendLangdock))
+	}
+	if c.Backend == BackendLangdock && c.Model == "" {
+		errs = append(errs, errors.New("model is required for backend langdock: use a model ID from GET /openai/{region}/v1/models"))
+	}
+	if c.LangdockRegion != "eu" && c.LangdockRegion != "us" {
+		errs = append(errs, fmt.Errorf("langdock_region %q: use eu or us", c.LangdockRegion))
 	}
 	if _, err := time.LoadLocation(c.Timezone); err != nil {
 		errs = append(errs, fmt.Errorf("timezone %q: use an IANA name such as Europe/Berlin", c.Timezone))
@@ -128,7 +138,7 @@ func (c *Config) validate() error {
 		errs = append(errs, errors.New("recover_messages is at most 999: Slack returns one page"))
 	}
 	for _, name := range c.Env {
-		if strings.HasPrefix(name, "MESSAGER_") || name == "ANTHROPIC_API_KEY" || name == "ANTHROPIC_AUTH_TOKEN" {
+		if strings.HasPrefix(name, "MESSAGER_") || name == "ANTHROPIC_API_KEY" || name == "ANTHROPIC_AUTH_TOKEN" || name == "LANGDOCK_API_KEY" {
 			errs = append(errs, fmt.Errorf("env: %s must not reach the claude CLI (it holds a token, or would make the CLI bill the API instead of using its login)", name))
 		}
 	}
