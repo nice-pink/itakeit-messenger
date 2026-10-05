@@ -2,8 +2,8 @@
   type Mode = 'task' | 'reminder' | 'neither'
   type Step = { verdict?: string; post?: { title: string; text: string; from: string }; reminder?: string }
 
-  // One scripted run per kind of message: the messager reads it, Claude
-  // answers, and the messager posts the task, schedules the reminder, or does nothing.
+  // One scripted run per kind of message: the messenger reads it, Claude
+  // answers, and the messenger posts the task, schedules the reminder, or does nothing.
   const scripts: Record<Mode, { channel: string; text: string; steps: Step[] }> = {
     task: {
       channel: '# backend',
@@ -58,7 +58,7 @@
   </div>
   <p class="note">{modes.find((m) => m.key === mode)?.note}</p>
 
-  <div class="slack" role="region" aria-label="Interactive example of the messager reading a Slack message">
+  <div class="slack" role="region" aria-label="Interactive example of the messenger reading a Slack message">
     <div class="head"><span>{script.channel}</span><button type="button" class="reset" onclick={() => pick(mode)}>reset</button></div>
 
     <div class="msg">
@@ -70,13 +70,13 @@
         <div class="thread" aria-live="polite">
           {#each shown as s, i (i)}
             {#if s.verdict}
-              <p class="tool"><span>the messager asks Claude, with no tools:</span> <code>{s.verdict}</code></p>
+              <p class="tool"><span>the messenger asks Claude, with no tools:</span> <code>{s.verdict}</code></p>
             {/if}
             {#if s.reminder}
               <div class="msg">
                 <div class="avatar agent"><img src="./turtle-post.png" alt="" /></div>
                 <div class="body">
-                  <div class="meta"><b>itakeit-messager</b> <span class="app">APP</span> <span>scheduled</span></div>
+                  <div class="meta"><b>itakeit-messenger</b> <span class="app">APP</span> <span>scheduled</span></div>
                   <p>{s.reminder}</p>
                 </div>
               </div>
@@ -91,7 +91,7 @@
               <div class="msg inner">
                 <div class="avatar agent"><img src="./turtle-post.png" alt="" /></div>
                 <div class="body">
-                  <div class="meta"><b>itakeit-messager</b> <span class="app">APP</span></div>
+                  <div class="meta"><b>itakeit-messenger</b> <span class="app">APP</span></div>
                   <p><b>{s.post.title}</b><br />{s.post.text}<br /><span class="from">From {s.post.from}</span></p>
                 </div>
               </div>
@@ -104,7 +104,7 @@
 
     <div class="foot">
       {#if !done}
-        <button type="button" class="step" onclick={next}>{step === 0 ? '▶ Let the messager read it' : '▶ Next step'}</button>
+        <button type="button" class="step" onclick={next}>{step === 0 ? '▶ Let the messenger read it' : '▶ Next step'}</button>
       {:else}
         <span class="small">Done. <button type="button" class="link" onclick={() => pick(mode)}>Run it again</button></span>
       {/if}

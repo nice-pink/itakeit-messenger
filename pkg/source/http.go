@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nice-pink/itakeit-messager/pkg/messager"
+	"github.com/nice-pink/itakeit-messenger/pkg/messenger"
 )
 
 // HTTP accepts POST /messages with {"text": "...", "id": "...", "source": "...",
@@ -30,9 +30,9 @@ const maxBody = 64 << 10
 
 func (h *HTTP) Name() string { return "http" }
 
-func (h *HTTP) Run(ctx context.Context, sink messager.Sink) error {
+func (h *HTTP) Run(ctx context.Context, sink messenger.Sink) error {
 	if len(h.Token) < 16 {
-		return errors.New("http source: MESSAGER_HTTP_TOKEN must be at least 16 characters")
+		return errors.New("http source: MESSENGER_HTTP_TOKEN must be at least 16 characters")
 	}
 	srv := &http.Server{Addr: h.Listen, Handler: h.Handler(sink), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second}
 	ln, err := net.Listen("tcp", h.Listen)
@@ -52,7 +52,7 @@ func (h *HTTP) Run(ctx context.Context, sink messager.Sink) error {
 	return nil
 }
 
-func (h *HTTP) Handler(sink messager.Sink) http.Handler {
+func (h *HTTP) Handler(sink messenger.Sink) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /messages", func(w http.ResponseWriter, r *http.Request) {
 		got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -76,12 +76,12 @@ func (h *HTTP) Handler(sink messager.Sink) http.Handler {
 		if in.ID == "" {
 			in.ID = fmt.Sprintf("%x", sha256.Sum256([]byte(in.Text)))
 		}
-		m := messager.Message{Source: name, ID: in.ID, Text: in.Text, Author: in.Author, Origin: messager.Escape(in.Source)}
+		m := messenger.Message{Source: name, ID: in.ID, Text: in.Text, Author: in.Author, Origin: messenger.Escape(in.Source)}
 		if in.URL != "" {
 			m.Link = func() string { return in.URL }
 		}
 		d, err := sink.Handle(r.Context(), m)
-		if errors.Is(err, messager.ErrInFlight) {
+		if errors.Is(err, messenger.ErrInFlight) {
 			http.Error(w, "the same message is still being processed: retry later", http.StatusConflict)
 			return
 		}

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nice-pink/itakeit-messager/pkg/config"
-	"github.com/nice-pink/itakeit-messager/pkg/messager"
+	"github.com/nice-pink/itakeit-messenger/pkg/config"
+	"github.com/nice-pink/itakeit-messenger/pkg/messenger"
 	"github.com/slack-go/slack/slackevents"
 )
 
@@ -54,13 +54,13 @@ func TestSlackAccept(t *testing.T) {
 	}
 }
 
-type fakeSink struct{ got []messager.Message }
+type fakeSink struct{ got []messenger.Message }
 
-func (f *fakeSink) Handle(_ context.Context, m messager.Message) (messager.Decision, error) {
+func (f *fakeSink) Handle(_ context.Context, m messenger.Message) (messenger.Decision, error) {
 	f.got = append(f.got, m)
-	return messager.Decision{Task: true, Posted: true}, nil
+	return messenger.Decision{Task: true, Posted: true}, nil
 }
-func (f *fakeSink) Enqueue(m messager.Message) { f.Handle(context.Background(), m) }
+func (f *fakeSink) Enqueue(m messenger.Message) { f.Handle(context.Background(), m) }
 
 func TestHTTP(t *testing.T) {
 	sink := &fakeSink{}
@@ -106,8 +106,8 @@ func TestStdinSkipsHugeLine(t *testing.T) {
 
 type busySink struct{ fakeSink }
 
-func (busySink) Handle(context.Context, messager.Message) (messager.Decision, error) {
-	return messager.Decision{}, messager.ErrInFlight
+func (busySink) Handle(context.Context, messenger.Message) (messenger.Decision, error) {
+	return messenger.Decision{}, messenger.ErrInFlight
 }
 
 func TestHTTPInFlightIsRetryable(t *testing.T) {

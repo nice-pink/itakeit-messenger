@@ -16,10 +16,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/nice-pink/itakeit-messager/pkg/classify"
-	"github.com/nice-pink/itakeit-messager/pkg/config"
-	"github.com/nice-pink/itakeit-messager/pkg/messager"
-	"github.com/nice-pink/itakeit-messager/pkg/source"
+	"github.com/nice-pink/itakeit-messenger/pkg/classify"
+	"github.com/nice-pink/itakeit-messenger/pkg/config"
+	"github.com/nice-pink/itakeit-messenger/pkg/messenger"
+	"github.com/nice-pink/itakeit-messenger/pkg/source"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/socketmode"
 )
@@ -29,7 +29,7 @@ func main() {
 	debug := flag.Bool("debug", false, "log raw Socket Mode traffic")
 	flag.Parse()
 	if err := run(*cfgPath, *debug); err != nil {
-		slog.Error("itakeit-messager stopped", "err", err)
+		slog.Error("itakeit-messenger stopped", "err", err)
 		os.Exit(1)
 	}
 }
@@ -42,12 +42,12 @@ func run(cfgPath string, debug bool) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	botToken, appToken := os.Getenv("MESSAGER_SLACK_BOT_TOKEN"), os.Getenv("MESSAGER_SLACK_APP_TOKEN")
+	botToken, appToken := os.Getenv("MESSENGER_SLACK_BOT_TOKEN"), os.Getenv("MESSENGER_SLACK_APP_TOKEN")
 	if !strings.HasPrefix(botToken, "xoxb-") {
-		return errors.New("set MESSAGER_SLACK_BOT_TOKEN (xoxb-...) from the messager's own Slack app")
+		return errors.New("set MESSENGER_SLACK_BOT_TOKEN (xoxb-...) from the messenger's own Slack app")
 	}
 	if cfg.Sources.Slack.Enabled && !strings.HasPrefix(appToken, "xapp-") {
-		return errors.New("sources.slack needs MESSAGER_SLACK_APP_TOKEN (xapp-...)")
+		return errors.New("sources.slack needs MESSENGER_SLACK_APP_TOKEN (xapp-...)")
 	}
 	api := slack.New(botToken, slack.OptionAppLevelToken(appToken), slack.OptionDebug(debug),
 		slack.OptionHTTPClient(&http.Client{Timeout: 15 * time.Second}), slack.OptionRetry(3))
@@ -57,7 +57,7 @@ func run(cfgPath string, debug bool) error {
 	}
 
 	var ask classify.Ask
-	secrets := []string{botToken, appToken, os.Getenv("MESSAGER_HTTP_TOKEN"), os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_AUTH_TOKEN"), os.Getenv("LANGDOCK_API_KEY")}
+	secrets := []string{botToken, appToken, os.Getenv("MESSENGER_HTTP_TOKEN"), os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_AUTH_TOKEN"), os.Getenv("LANGDOCK_API_KEY")}
 	switch cfg.Backend {
 	case config.BackendAPI:
 		ask = classify.NewAPI(cfg.Model)
@@ -96,26 +96,26 @@ func run(cfgPath string, debug bool) error {
 		loc, _ := time.LoadLocation(cfg.Timezone) // validated by config
 		cl.WithReminders(loc)
 	}
-	p := messager.New(cl, slackPoster{api: api}, cfg.TargetChannel, cfg.MinChars, cfg.MaxParallel)
+	p := messenger.New(cl, slackPoster{api: api}, cfg.TargetChannel, cfg.MinChars, cfg.MaxParallel)
 	if cfg.Reminders {
 		p.Scheduler = slackPoster{api: api}
 	}
 	if cfg.Tasks && cfg.RecoverMessages > 0 {
 		keys, err := slackPoster{api: api}.Recent(ctx, cfg.TargetChannel, cfg.RecoverMessages)
 		if err != nil {
-			return fmt.Errorf("read target_channel %s: %w (check the ID and that the messager's app is invited, with channels:history or groups:history)", cfg.TargetChannel, err)
+			return fmt.Errorf("read target_channel %s: %w (check the ID and that the messenger's app is invited, with channels:history or groups:history)", cfg.TargetChannel, err)
 		}
 		p.Seed(keys)
 		slog.Info("recovered posted tasks", "count", len(keys), "messages_read", cfg.RecoverMessages)
 	}
 	go p.Run(ctx)
 
-	var sources []messager.Source
+	var sources []messenger.Source
 	if cfg.Sources.Slack.Enabled {
 		sources = append(sources, &source.Slack{API: api, SM: socketmode.New(api, socketmode.OptionDebug(debug)), Cfg: cfg, UserID: auth.UserID, BotID: auth.BotID})
 	}
 	if cfg.Sources.HTTP.Enabled {
-		sources = append(sources, &source.HTTP{Listen: cfg.Sources.HTTP.Listen, Token: os.Getenv("MESSAGER_HTTP_TOKEN")})
+		sources = append(sources, &source.HTTP{Listen: cfg.Sources.HTTP.Listen, Token: os.Getenv("MESSENGER_HTTP_TOKEN")})
 	}
 	if cfg.Sources.Stdin {
 		sources = append(sources, &source.Stdin{R: os.Stdin})

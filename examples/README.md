@@ -1,6 +1,6 @@
 # Examples
 
-Deployment examples. Each directory has its own `config.yaml`; `config.example.yaml` in the repo root documents every key. The messager needs no tools and no database: its only state is in the target channel, which it reads on start. Create its Slack app first (README, steps 1 to 4) and run itakeit in the channel from its own repository ([itakeit's examples](https://github.com/nice-pink/itakeit/tree/main/examples) run it with Compose or in Kubernetes). Run one messager per Slack app: Slack delivers each Socket Mode event to one open connection, so a second instance takes events away from the first.
+Deployment examples. Each directory has its own `config.yaml`; `config.example.yaml` in the repo root documents every key. The messenger needs no tools and no database: its only state is in the target channel, which it reads on start. Create its Slack app first (README, steps 1 to 4) and run itakeit in the channel from its own repository ([itakeit's examples](https://github.com/nice-pink/itakeit/tree/main/examples) run it with Compose or in Kubernetes). Run one messenger per Slack app: Slack delivers each Socket Mode event to one open connection, so a second instance takes events away from the first.
 
 | Directory | Runs | Claude login |
 |---|---|---|
@@ -20,7 +20,7 @@ Put the tokens in `.env` (gitignored) and `target_channel` in `config.yaml`. The
 A quick test without Slack events is the stdin source: with `stdin: true` and `slack.enabled: false` in `config.yaml`, pipe a line in and watch it get classified. A task is posted to the target channel, so point it at a test channel:
 
 ```
-echo "The nightly export has failed three times, can someone look?" | docker compose run --rm -T messager
+echo "The nightly export has failed three times, can someone look?" | docker compose run --rm -T messenger
 ```
 
 A stdin line's key is its position and text, so once a line posted a task, a repeat of the same line is dropped as a duplicate on the next run: change the text to test again.
@@ -34,10 +34,10 @@ kubectl apply -k examples/kubernetes
 ```
 
 ```
-kubectl -n itakeit create secret generic itakeit-messager --from-literal=MESSAGER_SLACK_BOT_TOKEN=xoxb-... --from-literal=MESSAGER_SLACK_APP_TOKEN=xapp-... --from-literal=CLAUDE_CODE_OAUTH_TOKEN=sk-ant-... --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n itakeit create secret generic itakeit-messenger --from-literal=MESSENGER_SLACK_BOT_TOKEN=xoxb-... --from-literal=MESSENGER_SLACK_APP_TOKEN=xapp-... --from-literal=CLAUDE_CODE_OAUTH_TOKEN=sk-ant-... --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-There is no readiness endpoint. Check it with `kubectl -n itakeit logs deploy/itakeit-messager`, which logs `authenticated`, `model ready` and `recovered posted tasks` once up. The pod runs under the "restricted" Pod Security level. Pin `image:` to a release tag (`X.Y.Z`) or `sha-<short>` rather than `latest` for anything you depend on. Editing `config.yaml` and re-applying rolls the pod, since the ConfigMap name carries a content hash.
+There is no readiness endpoint. Check it with `kubectl -n itakeit logs deploy/itakeit-messenger`, which logs `authenticated`, `model ready` and `recovered posted tasks` once up. The pod runs under the "restricted" Pod Security level. Pin `image:` to a release tag (`X.Y.Z`) or `sha-<short>` rather than `latest` for anything you depend on. Editing `config.yaml` and re-applying rolls the pod, since the ConfigMap name carries a content hash.
 
 ### HTTP source
 
@@ -49,4 +49,4 @@ To take messages from other systems over HTTP inside the cluster, set in `config
     listen: 0.0.0.0:8080
 ```
 
-add `MESSAGER_HTTP_TOKEN` (16+ characters) to the Secret, and add `http.yaml` to `kustomization.yaml`. It defines a ClusterIP Service, so pods in the cluster reach `http://itakeit-messager.itakeit:8080/messages`. Put an Ingress with TLS in front before exposing it further.
+add `MESSENGER_HTTP_TOKEN` (16+ characters) to the Secret, and add `http.yaml` to `kustomization.yaml`. It defines a ClusterIP Service, so pods in the cluster reach `http://itakeit-messenger.itakeit:8080/messages`. Put an Ingress with TLS in front before exposing it further.

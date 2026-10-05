@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nice-pink/itakeit-messager/pkg/messager"
+	"github.com/nice-pink/itakeit-messenger/pkg/messenger"
 	"github.com/slack-go/slack"
 )
 
@@ -21,7 +21,7 @@ type slackAPI interface {
 
 type slackPoster struct{ api slackAPI }
 
-const metaType = "itakeit_messager_task"
+const metaType = "itakeit_messenger_task"
 
 func (s slackPoster) Post(ctx context.Context, channel, text, key string) (string, error) {
 	_, ts, err := s.api.PostMessageContext(ctx, channel, slack.MsgOptionText(text, false), slack.MsgOptionDisableLinkUnfurl(),
@@ -35,7 +35,7 @@ func (s slackPoster) Post(ctx context.Context, channel, text, key string) (strin
 // thread, so the same user's identical reminder in two threads of one channel at
 // the same minute counts as one. A failed lookup schedules anyway: a duplicate
 // beats a lost reminder.
-func (s slackPoster) Schedule(ctx context.Context, t messager.Thread, at time.Time, text string) error {
+func (s slackPoster) Schedule(ctx context.Context, t messenger.Thread, at time.Time, text string) error {
 	if s.scheduled(ctx, t.Channel, at, text) {
 		slog.Info("reminder already scheduled", "channel", t.Channel, "at", at)
 		return nil

@@ -31,24 +31,24 @@ sources:
     enabled: false
     listen: 127.0.0.1:8080`
 
-  const run = `docker run -d --name itakeit-messager --restart unless-stopped -e MESSAGER_SLACK_BOT_TOKEN -e MESSAGER_SLACK_APP_TOKEN -e CLAUDE_CODE_OAUTH_TOKEN -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messager:latest`
+  const run = `docker run -d --name itakeit-messenger --restart unless-stopped -e MESSENGER_SLACK_BOT_TOKEN -e MESSENGER_SLACK_APP_TOKEN -e CLAUDE_CODE_OAUTH_TOKEN -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messenger:latest`
 
-  const build = `git clone https://github.com/nice-pink/itakeit-messager.git && cd itakeit-messager && ./build`
+  const build = `git clone https://github.com/nice-pink/itakeit-messenger.git && cd itakeit-messenger && ./build`
 
-  const curl = `curl -s -H "Authorization: Bearer $MESSAGER_HTTP_TOKEN" -d '{"text":"The nightly export has failed three times, can someone look?","source":"cron"}' http://127.0.0.1:8080/messages`
+  const curl = `curl -s -H "Authorization: Bearer $MESSENGER_HTTP_TOKEN" -d '{"text":"The nightly export has failed three times, can someone look?","source":"cron"}' http://127.0.0.1:8080/messages`
 
   const reply = `{"task":true,"posted":true,"title":"Fix the failing nightly export","reason":"..."}`
 
   const sources = [
     ['slack', 'Top-level messages from every channel the app is in (not the target channel), or from channels only, minus exclude. Replies, edits, DMs and other bots’ messages are ignored by default. Private channels need include_private: true.'],
     ['http', 'POST /messages with a Bearer token (16+ characters) and a JSON body of at most 64 KB. Only text is required. The call waits for the verdict. 502 means classification or posting failed, 409 means the same message is still in flight: send it again. Binds to 127.0.0.1.'],
-    ['stdin', 'One message per line, handled in order. The messager exits at end of input when no other source runs.'],
+    ['stdin', 'One message per line, handled in order. The messenger exits at end of input when no other source runs.'],
   ]
 </script>
 
 <header class="nav">
   <div class="wrap row">
-    <a class="brand" href="#top"><img src="./turtle-post.png" alt="" /> itakeit-messager</a>
+    <a class="brand" href="#top"><img src="./turtle-post.png" alt="" /> itakeit-messenger</a>
     <ul class="backends" aria-label="Supported backends">
       <li class="badge">claude-code</li>
       <li class="badge">langdock</li>
@@ -68,7 +68,7 @@ sources:
     <div class="pitch">
       <img class="turtle" src="./turtle-post.png" alt="pixel turtle in a postal cap carrying an envelope" width="1268" height="1240" />
       <h1>The tasks in your messages. <span>Posted to itakeit.</span></h1>
-      <p class="lead"><b>itakeit-messager</b> reads messages from Slack channels, HTTP and standard input, asks Claude whether each contains a task, and posts the tasks to the channel <a href={itakeit}>itakeit</a> serves. It also sets reminders in the thread when a message asks for one. Nobody has to copy a request into the task channel by hand.</p>
+      <p class="lead"><b>itakeit-messenger</b> reads messages from Slack channels, HTTP and standard input, asks Claude whether each contains a task, and posts the tasks to the channel <a href={itakeit}>itakeit</a> serves. It also sets reminders in the thread when a message asks for one. Nobody has to copy a request into the task channel by hand.</p>
       <div class="cta">
         <a class="btn" href="#setup">Set it up</a>
         <a class="btn ghost" href={repo}>View on GitHub</a>
@@ -77,7 +77,7 @@ sources:
     </div>
     <div class="demo">
       <Demo />
-      <p class="small center">Try it: pick a message and let the messager read it.</p>
+      <p class="small center">Try it: pick a message and let the messenger read it.</p>
     </div>
   </section>
 
@@ -112,7 +112,7 @@ sources:
       </li>
       <li>
         <h3>Get the two tokens</h3>
-        <p>Under <b>Basic Information → App-Level Tokens</b>, generate a token with <code>connections:write</code>: that <code>xapp-…</code> token is <code>MESSAGER_SLACK_APP_TOKEN</code>, needed for the Slack source only. Under <b>Install App</b>, install the app and copy the <code>xoxb-…</code> Bot User OAuth Token: <code>MESSAGER_SLACK_BOT_TOKEN</code>.</p>
+        <p>Under <b>Basic Information → App-Level Tokens</b>, generate a token with <code>connections:write</code>: that <code>xapp-…</code> token is <code>MESSENGER_SLACK_APP_TOKEN</code>, needed for the Slack source only. Under <b>Install App</b>, install the app and copy the <code>xoxb-…</code> Bot User OAuth Token: <code>MESSENGER_SLACK_BOT_TOKEN</code>.</p>
       </li>
       <li>
         <h3>Invite it to the channels</h3>
@@ -125,14 +125,14 @@ sources:
       </li>
       <li>
         <h3>Log in to Claude</h3>
-        <p>Run <code>claude auth login</code>, or <code>claude setup-token</code> once and keep the token as <code>CLAUDE_CODE_OAUTH_TOKEN</code>. To bill the API instead, set <code>backend: api</code> and pass <code>ANTHROPIC_API_KEY</code>. The messager checks the login at start and refuses to run without it.</p>
+        <p>Run <code>claude auth login</code>, or <code>claude setup-token</code> once and keep the token as <code>CLAUDE_CODE_OAUTH_TOKEN</code>. To bill the API instead, set <code>backend: api</code> and pass <code>ANTHROPIC_API_KEY</code>. The messenger checks the login at start and refuses to run without it.</p>
       </li>
       <li>
         <h3>Run the container</h3>
         <p>Export the tokens, then start the published image from the directory with <code>config.yaml</code>.</p>
-        <Code code={'export MESSAGER_SLACK_BOT_TOKEN=xoxb-... MESSAGER_SLACK_APP_TOKEN=xapp-... CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...'} label="shell" />
+        <Code code={'export MESSENGER_SLACK_BOT_TOKEN=xoxb-... MESSENGER_SLACK_APP_TOKEN=xapp-... CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...'} label="shell" />
         <Code code={run} label="shell" />
-        <p>Or build the binary yourself and run <code>bin/itakeit-messager -config config.yaml</code>:</p>
+        <p>Or build the binary yourself and run <code>bin/itakeit-messenger -config config.yaml</code>:</p>
         <Code code={build} label="shell" />
       </li>
       <li>
@@ -179,9 +179,9 @@ sources:
     <h2>Reminders</h2>
     <p class="sub">On by default. Independent of tasks: a message can be a task, a reminder, both or neither.</p>
     <div class="points">
-      <p><b>A scheduled reply.</b> A message such as “remind me on Friday to send the invoice” gets a reply under it at that time, from the messager’s bot, mentioning the author: <code>Reminder for @anna: send the invoice</code>. Slack’s own reminders API is retired and cannot remind other users, so a scheduled reply is used.</p>
+      <p><b>A scheduled reply.</b> A message such as “remind me on Friday to send the invoice” gets a reply under it at that time, from the messenger’s bot, mentioning the author: <code>Reminder for @anna: send the invoice</code>. Slack’s own reminders API is retired and cannot remind other users, so a scheduled reply is used.</p>
       <p><b>It never guesses.</b> Relative times resolve against the current time in <code>timezone</code>. A vague or missing time creates no reminder, as does a time in the past or more than 120 days ahead, which is Slack’s limit. A date without a time means 09:00.</p>
-      <p><b>Slack messages only.</b> An HTTP or stdin message has no Slack message to reply under. A reply under the task the messager posted would come from the user itakeit records as the task’s reporter, which clears a needs-info status and pings the owners.</p>
+      <p><b>Slack messages only.</b> An HTTP or stdin message has no Slack message to reply under. A reply under the task the messenger posted would come from the user itakeit records as the task’s reporter, which clears a needs-info status and pings the owners.</p>
       <p><b>No cancelling.</b> It skips a reminder its app already has scheduled for the same channel, time and text, so a restart does not remind twice. A differently worded repeat still does. If the original message is deleted or the work is done early, the reminder still posts.</p>
       <p><b>Reminders only.</b> With <code>tasks: false</code> nothing is posted to a channel, <code>target_channel</code> is optional, and only the Slack source is allowed.</p>
     </div>
@@ -202,7 +202,7 @@ sources:
 
 <footer>
   <div class="wrap row">
-    <span><img src="./turtle-post.png" alt="" /> itakeit-messager</span>
+    <span><img src="./turtle-post.png" alt="" /> itakeit-messenger</span>
     <div>Needs <a href={itakeit}>itakeit</a>. Pairs with <a href={agent}>itakeit-agent</a>.</div>
     <div>built by <a href="https://nice.pink">nice-pink</a></div>
   </div>

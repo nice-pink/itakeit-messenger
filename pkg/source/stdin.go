@@ -9,21 +9,21 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/nice-pink/itakeit-messager/pkg/messager"
+	"github.com/nice-pink/itakeit-messenger/pkg/messenger"
 )
 
-// Stdin handles one message per line in order, so `tail -f notes.txt | itakeit-messager`
+// Stdin handles one message per line in order, so `tail -f notes.txt | itakeit-messenger`
 // and quick tests work. It returns at end of input.
 type Stdin struct{ R io.Reader }
 
 func (s *Stdin) Name() string { return "stdin" }
 
-func (s *Stdin) Run(ctx context.Context, sink messager.Sink) error {
+func (s *Stdin) Run(ctx context.Context, sink messenger.Sink) error {
 	r := bufio.NewReaderSize(s.R, 4096)
 	for n := 1; ; n++ {
 		line, err := readLine(r)
 		if t := strings.TrimSpace(line); t != "" {
-			m := messager.Message{Source: "stdin", ID: fmt.Sprintf("%d:%s", n, t), Text: t, Origin: "stdin"}
+			m := messenger.Message{Source: "stdin", ID: fmt.Sprintf("%d:%s", n, t), Text: t, Origin: "stdin"}
 			if _, err := sink.Handle(ctx, m); err != nil {
 				slog.Warn("stdin message failed", "line", n, "err", err)
 			}

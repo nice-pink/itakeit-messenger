@@ -1,10 +1,10 @@
 display_information:
-  name: itakeit messager
+  name: itakeit messenger
   description: Reads messages from several sources and posts the ones that contain a task to an itakeit channel.
   background_color: "#1e8764"
 features:
   bot_user:
-    display_name: itakeit-messager
+    display_name: itakeit-messenger
     always_online: true
 oauth_config:
   scopes:

@@ -1,4 +1,4 @@
-// Package config loads the messager's YAML file.
+// Package config loads the messenger's YAML file.
 package config
 
 import (
@@ -26,7 +26,7 @@ const (
 const MaxKnowledge = 8000
 
 type Config struct {
-	// Tasks makes the messager post tasks to TargetChannel. Without it the messager only
+	// Tasks makes the messenger post tasks to TargetChannel. Without it the messenger only
 	// sets reminders and TargetChannel is optional.
 	Tasks bool `yaml:"tasks"`
 	// TargetChannel is the ID of the channel itakeit serves, where tasks are posted.
@@ -47,7 +47,7 @@ type Config struct {
 	MaxParallel int      `yaml:"max_parallel"`
 	// MinChars skips shorter messages without asking the model.
 	MinChars int `yaml:"min_chars"`
-	// Reminders makes the messager schedule a thread reply when a message asks to be
+	// Reminders makes the messenger schedule a thread reply when a message asks to be
 	// reminded at a time. Timezone (IANA name) is how the model reads that time.
 	Reminders bool   `yaml:"reminders"`
 	Timezone  string `yaml:"timezone"`
@@ -138,7 +138,7 @@ func (c *Config) validate() error {
 		errs = append(errs, errors.New("recover_messages is at most 999: Slack returns one page"))
 	}
 	for _, name := range c.Env {
-		if strings.HasPrefix(name, "MESSAGER_") || name == "ANTHROPIC_API_KEY" || name == "ANTHROPIC_AUTH_TOKEN" || name == "LANGDOCK_API_KEY" {
+		if strings.HasPrefix(name, "MESSENGER_") || name == "ANTHROPIC_API_KEY" || name == "ANTHROPIC_AUTH_TOKEN" || name == "LANGDOCK_API_KEY" {
 			errs = append(errs, fmt.Errorf("env: %s must not reach the claude CLI (it holds a token, or would make the CLI bill the API instead of using its login)", name))
 		}
 	}

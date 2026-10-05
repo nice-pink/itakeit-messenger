@@ -1,6 +1,6 @@
-# itakeit-messager
+# itakeit-messenger
 
-> itakeit-messager is a free, self-hosted service that reads messages from Slack channels, HTTP and standard input, asks Claude whether each contains a task, and posts the tasks as top-level messages to the Slack channel itakeit serves. It also schedules a reminder reply in the original thread when a message asks to be reminded at a specific time.
+> itakeit-messenger is a free, self-hosted service that reads messages from Slack channels, HTTP and standard input, asks Claude whether each contains a task, and posts the tasks as top-level messages to the Slack channel itakeit serves. It also schedules a reminder reply in the original thread when a message asks to be reminded at a specific time.
 
 It runs as one Docker container on Claude, through the Claude Code CLI and its login or through the Messages API with an API key. It never talks to itakeit directly; itakeit sees its posts like any message a person wrote. It keeps no database: on start it reads the latest messages of the target channel and takes the keys of its own tasks from message metadata, so a restart does not post a task twice.
 
@@ -8,8 +8,8 @@ It runs as one Docker container on Claude, through the Claude Code CLI and its l
 
 - A source delivers a message: a top-level message in a Slack channel the app is in, a POST /messages request, or a line on standard input.
 - Messages shorter than min_chars are skipped. Every other message goes to Claude with no tools, no MCP servers and no settings, so a message that tries to steer the model has nothing to act with.
-- Claude answers with task, title, summary and reason. For a task the messager posts the bold title, the summary and a link to the original to target_channel. Nobody is mentioned, and model text is escaped so it cannot ping @channel or groups.
-- With reminders on (the default), a message such as "remind me on Friday to send the invoice" gets a scheduled thread reply from the messager's bot at that time, mentioning the author. Vague times, times in the past and times more than 120 days ahead create no reminder. Only Slack messages get reminders.
+- Claude answers with task, title, summary and reason. For a task the messenger posts the bold title, the summary and a link to the original to target_channel. Nobody is mentioned, and model text is escaped so it cannot ping @channel or groups.
+- With reminders on (the default), a message such as "remind me on Friday to send the invoice" gets a scheduled thread reply from the messenger's bot at that time, mentioning the author. Vague times, times in the past and times more than 120 days ahead create no reminder. Only Slack messages get reminders.
 - A message is classified once: redelivery of the same Slack message or HTTP id is dropped.
 - Everything the model writes is escaped and scrubbed of the CLI login email, the Slack and HTTP tokens and the working directory, best effort.
 - tasks: false makes it a reminder-only service: target_channel is optional and only the slack source is allowed.
@@ -17,16 +17,16 @@ It runs as one Docker container on Claude, through the Claude Code CLI and its l
 ## Setup
 
 1. Run itakeit in the channel (https://itakeit.nice.pink).
-2. Create a separate Slack app from slack-app-manifest.yaml (scopes: channels:history, groups:history, chat:write; events: message.channels, message.groups). Generate an app-level token with connections:write (MESSAGER_SLACK_APP_TOKEN) and install the app (MESSAGER_SLACK_BOT_TOKEN). It must differ from itakeit and itakeit-agent.
+2. Create a separate Slack app from slack-app-manifest.yaml (scopes: channels:history, groups:history, chat:write; events: message.channels, message.groups). Generate an app-level token with connections:write (MESSENGER_SLACK_APP_TOKEN) and install the app (MESSENGER_SLACK_BOT_TOKEN). It must differ from itakeit and itakeit-agent.
 3. Invite it to target_channel and to every channel it should read.
 4. Copy config.example.yaml to config.yaml and set target_channel and the sources.
 5. Log in to Claude: claude auth login, or CLAUDE_CODE_OAUTH_TOKEN from claude setup-token, or backend: api with ANTHROPIC_API_KEY.
-6. Run the published image ghcr.io/nice-pink/itakeit-messager with the tokens and the config mounted, or build it from the repository with ./build. The repository's examples/ directory has a Docker Compose file and a Kubernetes kustomization.
+6. Run the published image ghcr.io/nice-pink/itakeit-messenger with the tokens and the config mounted, or build it from the repository with ./build. The repository's examples/ directory has a Docker Compose file and a Kubernetes kustomization.
 
 ## Links
 
 - Homepage: https://itakeit-messenger.nice.pink
-- Source and docs: https://github.com/nice-pink/itakeit-messager
+- Source and docs: https://github.com/nice-pink/itakeit-messenger
 - itakeit: https://itakeit.nice.pink
 - itakeit-agent: https://itakeit-agent.nice.pink
 - Author: nice-pink (https://nice.pink)

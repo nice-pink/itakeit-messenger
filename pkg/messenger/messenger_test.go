@@ -1,4 +1,4 @@
-package messager
+package messenger
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nice-pink/itakeit-messager/pkg/classify"
+	"github.com/nice-pink/itakeit-messenger/pkg/classify"
 )
 
 type fakePoster struct {

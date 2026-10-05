@@ -1,6 +1,6 @@
-// Package messager turns messages from any source into task messages in the
+// Package messenger turns messages from any source into task messages in the
 // channel itakeit serves.
-package messager
+package messenger
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/nice-pink/itakeit-messager/pkg/classify"
+	"github.com/nice-pink/itakeit-messenger/pkg/classify"
 )
 
 // Message is one input text. ID must be unique within Source and stable across

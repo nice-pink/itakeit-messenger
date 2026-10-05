@@ -1,5 +1,5 @@
 # Full reference: config.example.yaml in the repo root.
-# ID of the channel itakeit serves. Invite the messager's app to it.
+# ID of the channel itakeit serves. Invite the messenger's app to it.
 target_channel: C0123456789
 backend: claude-code
 criteria: |

@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: itakeit-messager
+  name: itakeit-messenger
   labels:
-    app: itakeit-messager
+    app: itakeit-messenger
 spec:
   # One instance per Slack app: Slack delivers each Socket Mode event to only one
   # open connection, so a second replica misses events, and the two would post
@@ -14,13 +14,13 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: itakeit-messager
+      app: itakeit-messenger
   template:
     metadata:
       labels:
-        app: itakeit-messager
+        app: itakeit-messenger
     spec:
-      # The messager makes no Kubernetes calls.
+      # The messenger makes no Kubernetes calls.
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
@@ -30,13 +30,13 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: messager
-          image: ghcr.io/nice-pink/itakeit-messager:latest
+        - name: messenger
+          image: ghcr.io/nice-pink/itakeit-messenger:latest
           # Socket Mode makes only outbound connections: no port unless the http
           # source is on (http.yaml).
           envFrom:
             - secretRef:
-                name: itakeit-messager
+                name: itakeit-messenger
           volumeMounts:
             - name: config
               mountPath: /config
@@ -62,7 +62,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: itakeit-messager-config
+            name: itakeit-messenger-config
         - name: home
           emptyDir: {}
         - name: tmp

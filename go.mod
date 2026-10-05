@@ -1,4 +1,4 @@
-module github.com/nice-pink/itakeit-messager
+module github.com/nice-pink/itakeit-messenger
 
 go 1.27.0
 

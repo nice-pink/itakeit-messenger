@@ -1,6 +1,6 @@
 FROM cgr.dev/chainguard/go:latest-dev AS builder
 
-LABEL org.opencontainers.image.source="https://github.com/nice-pink/itakeit-messager"
+LABEL org.opencontainers.image.source="https://github.com/nice-pink/itakeit-messenger"
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 ./build
 # the Go binary needs for Slack and Langdock, and runs as a non-root user.
 FROM cgr.dev/chainguard/static:latest
 
-LABEL org.opencontainers.image.source="https://github.com/nice-pink/itakeit-messager"
+LABEL org.opencontainers.image.source="https://github.com/nice-pink/itakeit-messenger"
 
-COPY --from=builder /app/bin/itakeit-messager /app/itakeit-messager
-ENTRYPOINT [ "/app/itakeit-messager", "-config", "/config/config.yaml" ]
+COPY --from=builder /app/bin/itakeit-messenger /app/itakeit-messenger
+ENTRYPOINT [ "/app/itakeit-messenger", "-config", "/config/config.yaml" ]

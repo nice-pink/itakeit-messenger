@@ -42,7 +42,7 @@ func (c *Classifier) WithSecrets(secrets ...string) *Classifier {
 func (c *Classifier) Secrets() int { return len(c.secret) }
 
 // Probe makes one cheap call before the first message, so a login or model that
-// does not work stops the messager at startup. It also asks the model which email
+// does not work stops the messenger at startup. It also asks the model which email
 // address its prompt carries (the CLI adds the login's to every prompt) and
 // scrubs that exact string, whichever login it came from. A model that declines
 // to say fails nothing: refused reports it.

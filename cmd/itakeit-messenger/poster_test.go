@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nice-pink/itakeit-messager/pkg/messager"
+	"github.com/nice-pink/itakeit-messenger/pkg/messenger"
 	"github.com/slack-go/slack"
 )
 
@@ -33,7 +33,7 @@ func (f *fakeSlack) GetConversationHistoryContext(context.Context, *slack.GetCon
 func TestScheduleSkipsExistingReminder(t *testing.T) {
 	at := time.Date(2026, 10, 9, 9, 0, 0, 0, time.UTC)
 	text := "Reminder for <@U1>: send the invoice"
-	th := messager.Thread{Channel: "C1", TS: "1.1"}
+	th := messenger.Thread{Channel: "C1", TS: "1.1"}
 	for name, tc := range map[string]struct {
 		listed  []slack.ScheduledMessage
 		listErr error

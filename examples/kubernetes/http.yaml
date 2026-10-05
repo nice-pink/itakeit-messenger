@@ -1,15 +1,15 @@
 # The http source: POST /messages from other pods in the cluster, at
-# http://itakeit-messager.itakeit:8080/messages with
-# Authorization: Bearer $MESSAGER_HTTP_TOKEN (add it to the Secret). Needs
+# http://itakeit-messenger.itakeit:8080/messages with
+# Authorization: Bearer $MESSENGER_HTTP_TOKEN (add it to the Secret). Needs
 # listen: 0.0.0.0:8080 in config.yaml, and this file in kustomization.yaml. Put
 # an Ingress with TLS in front before exposing it outside the cluster.
 apiVersion: v1
 kind: Service
 metadata:
-  name: itakeit-messager
+  name: itakeit-messenger
 spec:
   selector:
-    app: itakeit-messager
+    app: itakeit-messenger
   ports:
     - port: 8080
       targetPort: 8080

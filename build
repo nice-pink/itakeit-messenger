@@ -3,4 +3,4 @@ set -e
 
 mkdir -p bin/
 go test ./...
-go build -o bin/itakeit-messager ./cmd/itakeit-messager
+go build -o bin/itakeit-messenger ./cmd/itakeit-messenger

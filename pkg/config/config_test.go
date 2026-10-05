@@ -25,7 +25,7 @@ func TestParseErrors(t *testing.T) {
 		"http no tasks":     {"tasks: false\nsources: {http: {enabled: true}}", "only the slack source"},
 		"negative min":      {"target_channel: C0123456789\nmin_chars: -5\nsources: {stdin: true}", "min_chars"},
 		"recover cap":       {"target_channel: C0123456789\nrecover_messages: 5000\nsources: {stdin: true}", "999"},
-		"token in env":      {"target_channel: C0123456789\nenv: [MESSAGER_SLACK_BOT_TOKEN]\nsources: {stdin: true}", "MESSAGER_SLACK_BOT_TOKEN"},
+		"token in env":      {"target_channel: C0123456789\nenv: [MESSENGER_SLACK_BOT_TOKEN]\nsources: {stdin: true}", "MESSENGER_SLACK_BOT_TOKEN"},
 		"langdock no model": {"target_channel: C0123456789\nbackend: langdock\nsources: {stdin: true}", "model is required"},
 		"bad region":        {"target_channel: C0123456789\nbackend: langdock\nmodel: m\nlangdock_region: asia\nsources: {stdin: true}", "langdock_region"},
 		"bad timezone":      {"target_channel: C0123456789\ntimezone: Mars/Base\nsources: {stdin: true}", "timezone"},

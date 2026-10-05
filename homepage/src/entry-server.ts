@@ -8,7 +8,7 @@ const author = { '@type': 'Organization', '@id': 'https://nice.pink/#org', name:
 
 const app = {
   '@type': 'SoftwareApplication',
-  name: 'itakeit-messager',
+  name: 'itakeit-messenger',
   url: `${site}/`,
   image: `${site}/og-image.png`,
   applicationCategory: 'BusinessApplication',
@@ -26,5 +26,5 @@ const app = {
 const ld = (graph: object[]) => JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c')
 
 export const pages = [
-  { file: 'index.html', render: () => render(App), jsonLd: ld([author, { '@type': 'WebSite', name: 'itakeit-messager', url: `${site}/`, publisher: { '@id': author['@id'] } }, app]) },
+  { file: 'index.html', render: () => render(App), jsonLd: ld([author, { '@type': 'WebSite', name: 'itakeit-messenger', url: `${site}/`, publisher: { '@id': author['@id'] } }, app]) },
 ]

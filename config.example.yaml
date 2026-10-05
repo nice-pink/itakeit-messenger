@@ -5,7 +5,7 @@ tasks: true
 
 # ID of the channel itakeit serves (not its name): channel details -> About. Tasks are
 # posted there as top-level messages, which itakeit turns into tasks. Invite the
-# messager's Slack app to it. It is never read as a source.
+# messenger's Slack app to it. It is never read as a source.
 target_channel: C0123456789
 
 # claude-code (default): the Claude Code CLI with its login (`claude auth login`, or
@@ -39,7 +39,7 @@ criteria: |
 #   severity and the alert's link in the summary. [RESOLVED] notices are not tasks.
 
 # When a message asks to be reminded at a specific time ("remind me on Friday to
-# send the invoice"), the messager schedules a reply under that message at the due
+# send the invoice"), the messenger schedules a reply under that message at the due
 # time, from its own bot, mentioning the author. A message can be a task, a
 # reminder, both or neither. Vague times ("soon") create no reminder, and Slack
 # allows at most 120 days ahead. timezone (IANA name) is how times in messages are
@@ -75,11 +75,11 @@ sources:
     # Private channels are skipped unless this is true. A task posted from one shows
     # its summary and a link in the target channel, so it leaves the private channel.
     include_private: false
-    # Messages from other bots and apps (alerts, forms). The messager's own are never read.
+    # Messages from other bots and apps (alerts, forms). The messenger's own are never read.
     include_bots: false
 
   # POST /messages with {"text": "...", "source": "nagios", "author": "...",
-  # "url": "...", "id": "..."} and Authorization: Bearer $MESSAGER_HTTP_TOKEN
+  # "url": "...", "id": "..."} and Authorization: Bearer $MESSENGER_HTTP_TOKEN
   # (16+ characters). Only text is required. The answer is the decision as JSON.
   http:
     enabled: false
