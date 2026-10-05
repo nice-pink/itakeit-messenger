@@ -62,4 +62,4 @@ Each message that passes `min_chars` is one model call, at low effort and with a
 
 ## Homepage
 
-`homepage/` is a Svelte site prerendered at build time (`cd homepage && npm ci && npm run build`, output in `homepage/dist`). It is served at `itakeit-messager.nice.pink`, set in `src/lib/site.ts`, `index.html` and `public/`. It is outside the Docker image.
+`homepage/` is a Svelte site prerendered at build time (`cd homepage && npm ci && npm run build`, output in `homepage/dist`). It is served at `itakeit-messenger.nice.pink`, set in `src/lib/site.ts`, `index.html` and `public/`. It is outside the Docker image.

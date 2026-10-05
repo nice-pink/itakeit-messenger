@@ -13,4 +13,4 @@ Allow: /
 User-agent: ClaudeBot
 Allow: /
 
-Sitemap: https://itakeit-messager.nice.pink/sitemap.xml
+Sitemap: https://itakeit-messenger.nice.pink/sitemap.xml

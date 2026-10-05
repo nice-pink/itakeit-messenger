@@ -25,7 +25,7 @@ It runs as one Docker container on Claude, through the Claude Code CLI and its l
 
 ## Links
 
-- Homepage: https://itakeit-messager.nice.pink
+- Homepage: https://itakeit-messenger.nice.pink
 - Source and docs: https://github.com/nice-pink/itakeit-messager
 - itakeit: https://itakeit.nice.pink
 - itakeit-agent: https://itakeit-agent.nice.pink
