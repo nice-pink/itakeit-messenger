@@ -1,0 +1,107 @@
+package classify
+
+import (
+	"context"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestClassify(t *testing.T) {
+	var gotSystem, gotUser string
+	ask := func(_ context.Context, system, user string, dest any) error {
+		gotSystem, gotUser = system, user
+		*dest.(*Verdict) = Verdict{Task: true, Title: "  Fix\n the   build ", Summary: "CI is red"}
+		return nil
+	}
+	v, err := New(ask, "Bug reports count.").Classify(context.Background(), "build is red", "U1", "<#C1>")
+	if err != nil || v.Title != "Fix the build" {
+		t.Fatalf("v=%+v err=%v", v, err)
+	}
+	if !strings.Contains(gotSystem, "Bug reports count.") || !strings.Contains(gotUser, "build is red") {
+		t.Fatalf("prompt: %q / %q", gotSystem, gotUser)
+	}
+}
+
+func TestTaskWithoutSummaryIsAnError(t *testing.T) {
+	ask := func(_ context.Context, _, _ string, dest any) error {
+		*dest.(*Verdict) = Verdict{Task: true, Title: "x"}
+		return nil
+	}
+	if _, err := New(ask, "").Classify(context.Background(), "x", "", ""); err == nil {
+		t.Fatal("want error")
+	}
+}
+
+func TestSchema(t *testing.T) {
+	s, err := schemaOf(&Verdict{})
+	if err != nil || !strings.Contains(s, `"task"`) || !strings.Contains(s, "summary") || strings.Contains(s, "Due") || !strings.Contains(s, "remind_at") {
+		t.Fatalf("%s %v", s, err)
+	}
+}
+
+func TestReminders(t *testing.T) {
+	loc, _ := time.LoadLocation("Europe/Berlin")
+	now := time.Date(2026, 10, 2, 13, 0, 0, 0, time.UTC)
+	for name, tc := range map[string]struct {
+		at, text string
+		ok       bool
+	}{
+		"future":   {"2026-10-09T09:00", "send the invoice", true},
+		"past":     {"2026-10-01T09:00", "send the invoice", false},
+		"too soon": {"2026-10-02T15:00:30", "x", false},
+		"too far":  {"2027-03-01T09:00", "send the invoice", false},
+		"garbage":  {"friday", "send the invoice", false},
+		"no text":  {"2026-10-09T09:00", " ", false},
+	} {
+		var gotSystem, gotUser string
+		ask := func(_ context.Context, system, user string, dest any) error {
+			gotSystem, gotUser = system, user
+			*dest.(*Verdict) = Verdict{Reminder: true, RemindAt: tc.at, RemindText: tc.text}
+			return nil
+		}
+		c := New(ask, "").WithReminders(loc)
+		c.Now = func() time.Time { return now }
+		v, err := c.Classify(context.Background(), "remind me friday", "U1", "x")
+		if err != nil || v.Reminder != tc.ok {
+			t.Errorf("%s: reminder=%v err=%v", name, v.Reminder, err)
+		}
+		if tc.ok && !v.Due.Equal(time.Date(2026, 10, 9, 9, 0, 0, 0, loc)) {
+			t.Errorf("%s: due %v is not 09:00 in the configured zone", name, v.Due)
+		}
+		if !strings.Contains(gotSystem, "reminder") || !strings.Contains(gotUser, "Now: 2026-10-02T15:00 Friday Europe/Berlin") {
+			t.Errorf("%s: prompt lacks the clock: %q", name, gotUser)
+		}
+	}
+}
+
+func TestRemindersOffIgnoresModel(t *testing.T) {
+	ask := func(_ context.Context, system, _ string, dest any) error {
+		if strings.Contains(system, "reminder") {
+			t.Error("reminder prompt sent while off")
+		}
+		*dest.(*Verdict) = Verdict{Reminder: true, RemindAt: "2026-10-09T09:00", RemindText: "x"}
+		return nil
+	}
+	if v, _ := New(ask, "").Classify(context.Background(), "x", "", ""); v.Reminder {
+		t.Fatal("reminder must be off")
+	}
+}
+
+func TestWithoutTasks(t *testing.T) {
+	var gotSystem string
+	ask := func(_ context.Context, system, _ string, dest any) error {
+		gotSystem = system
+		*dest.(*Verdict) = Verdict{Task: true, Title: "x", Summary: "y", Reminder: true, RemindAt: "2026-10-09T09:00", RemindText: "send it"}
+		return nil
+	}
+	c := New(ask, "Bugs count.").WithoutTasks().WithReminders(time.UTC)
+	c.Now = func() time.Time { return time.Date(2026, 10, 2, 13, 0, 0, 0, time.UTC) }
+	v, err := c.Classify(context.Background(), "remind me friday", "U1", "x")
+	if err != nil || v.Task || !v.Reminder {
+		t.Fatalf("v=%+v err=%v", v, err)
+	}
+	if strings.Contains(gotSystem, "Bugs count.") || strings.Contains(gotSystem, "task channel") || !strings.Contains(gotSystem, "always set task to false") {
+		t.Fatalf("prompt still asks for tasks: %q", gotSystem)
+	}
+}

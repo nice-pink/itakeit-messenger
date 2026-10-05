@@ -1,0 +1,14 @@
+homepage/
+.env
+.env.*
+config.yaml
+bin/
+.agent/
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+slack-app-manifest.yaml
+.gitignore
+.git/
+cover.out
+.DS_Store

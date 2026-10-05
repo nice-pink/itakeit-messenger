@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>itakeit-messager: finds the tasks in your Slack messages and posts them to itakeit</title>
+    <meta name="description" content="itakeit-messager is a free, self-hosted service that asks Claude whether each Slack, HTTP or stdin message contains a task, posts the tasks to the channel itakeit serves, and schedules reminders in the thread." />
+    <meta name="theme-color" content="#1e8764" />
+    <link rel="canonical" href="https://itakeit-messager.nice.pink/" />
+
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="itakeit-messager" />
+    <meta property="og:title" content="itakeit-messager: finds the tasks in your messages" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:description" content="A free, self-hosted service that finds the tasks in your Slack messages and posts them to itakeit, with reminders." />
+    <meta property="og:url" content="https://itakeit-messager.nice.pink/" />
+    <meta property="og:image" content="https://itakeit-messager.nice.pink/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="pixel parrot riding the itakeit turtle, next to the headline: the tasks in your messages, posted to itakeit" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="itakeit-messager: finds the tasks in your messages" />
+    <meta name="twitter:description" content="A free, self-hosted service that finds the tasks in your messages and posts them to itakeit." />
+    <meta name="twitter:image" content="https://itakeit-messager.nice.pink/og-image.png" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Dev-only fallback: `npm run build` replaces everything up to the
+           end marker with the prerendered app (scripts/prerender.js). -->
+      <main>
+        <h1>itakeit-messager: the tasks in your messages, posted to itakeit</h1>
+        <p>A free, self-hosted service that asks Claude whether a message contains a task and posts the tasks to the channel itakeit serves.</p>
+        <p><a href="https://github.com/nice-pink/itakeit-messager">GitHub</a></p>
+      </main>
+      <!--/fallback-->
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

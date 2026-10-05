@@ -1,0 +1,22 @@
+display_information:
+  name: itakeit messager
+  description: Reads messages from several sources and posts the ones that contain a task to an itakeit channel.
+  background_color: "#1e8764"
+features:
+  bot_user:
+    display_name: itakeit-messager
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+    - channels:history
+    - groups:history
+    - chat:write
+settings:
+  event_subscriptions:
+    bot_events:
+    - message.channels
+    - message.groups
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false

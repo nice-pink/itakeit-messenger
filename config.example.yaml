@@ -1,0 +1,76 @@
+# Post messages that contain a task to target_channel. false: only set reminders
+# (see reminders below), target_channel is then optional, and only the slack
+# source works, since a reminder is a reply under a Slack message.
+tasks: true
+
+# ID of the channel itakeit serves (not its name): channel details -> About. Tasks are
+# posted there as top-level messages, which itakeit turns into tasks. Invite the
+# messager's Slack app to it. It is never read as a source.
+target_channel: C0123456789
+
+# claude-code (default): the Claude Code CLI with its login (`claude auth login`, or
+#   CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`). Counts against that plan.
+# api: the Messages API with ANTHROPIC_API_KEY. Billed to the Console organization.
+backend: claude-code
+claude_bin: claude
+
+# Default sonnet for claude-code (a CLI alias) and claude-sonnet-5-5 for api.
+# Every message that passes min_chars costs one call, so a small model fits.
+# model: sonnet
+
+# What counts as a task in this team, added to the built-in definition. Ignored
+# when tasks is false.
+criteria: |
+  Requests to people ("can someone look at ...", "we need ..."), bug reports,
+  and questions that need a person to investigate. Not tasks: deploy notices
+  and alerts that resolved themselves.
+
+# When a message asks to be reminded at a specific time ("remind me on Friday to
+# send the invoice"), the messager schedules a reply under that message at the due
+# time, from its own bot, mentioning the author. A message can be a task, a
+# reminder, both or neither. Vague times ("soon") create no reminder, and Slack
+# allows at most 120 days ahead. timezone (IANA name) is how times in messages are
+# read. Only Slack messages get reminders: http and stdin messages have no Slack
+# message to reply under, and a reply under the posted task would make itakeit
+# treat it as the reporter answering.
+reminders: true
+timezone: Europe/Berlin
+
+# Extra environment variables for the claude CLI. It gets only what it needs
+# (PATH, HOME, proxies, CLAUDE_CODE_*, ...), never the Slack or HTTP tokens.
+env: []
+
+# Classifications running at the same time.
+max_parallel: 2
+
+# Messages shorter than this are skipped without a model call.
+min_chars: 12
+
+# With tasks on: on start, the latest messages of target_channel are read to find tasks already
+# posted, so a restart does not post them again. Needs the app in the channel with
+# channels:history or groups:history. 0 disables it, 999 is the most.
+recover_messages: 200
+
+sources:
+  # Top-level messages of the channels the app is in. Replies, edits and DMs are ignored; a message with a file attached is read.
+  slack:
+    enabled: true
+    # Read only these channel IDs. Empty reads every channel the app is a member of
+    # (not the target channel).
+    channels: []
+    exclude: []
+    # Private channels are skipped unless this is true. A task posted from one shows
+    # its summary and a link in the target channel, so it leaves the private channel.
+    include_private: false
+    # Messages from other bots and apps (alerts, forms). The messager's own are never read.
+    include_bots: false
+
+  # POST /messages with {"text": "...", "source": "nagios", "author": "...",
+  # "url": "...", "id": "..."} and Authorization: Bearer $MESSAGER_HTTP_TOKEN
+  # (16+ characters). Only text is required. The answer is the decision as JSON.
+  http:
+    enabled: false
+    listen: 127.0.0.1:8080
+
+  # One message per line from standard input, for pipes and tests.
+  stdin: false
