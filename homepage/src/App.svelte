@@ -15,6 +15,9 @@
     { title: 'Scrubs what the model writes', text: 'The CLI login email, the Slack and HTTP tokens and the working directory are replaced with [redacted] before anything is posted.' },
   ]
 
+  let backend = $state<'claude-code' | 'langdock'>('claude-code')
+  const langdock = $derived(backend === 'langdock')
+
   const config = `tasks: true
 target_channel: C0123456789   # the channel itakeit serves (its ID)
 criteria: |
@@ -34,6 +37,14 @@ sources:
   const run = `docker run -d --name itakeit-messenger --restart unless-stopped -e MESSENGER_SLACK_BOT_TOKEN -e MESSENGER_SLACK_APP_TOKEN -e CLAUDE_CODE_OAUTH_TOKEN -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messenger:latest`
 
   const build = `git clone https://github.com/nice-pink/itakeit-messenger.git && cd itakeit-messenger && ./build`
+
+  const langdockConfig = `backend: langdock
+model: claude-sonnet-4-5     # a model ID from your Langdock workspace
+langdock_region: eu          # eu (default) or us`
+
+  const langdockRun = `docker run -d --name itakeit-messenger --restart unless-stopped -e MESSENGER_SLACK_BOT_TOKEN -e MESSENGER_SLACK_APP_TOKEN -e LANGDOCK_API_KEY -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messenger-langdock:latest`
+
+  const langdockBuild = `git clone https://github.com/nice-pink/itakeit-messenger.git && docker build -f itakeit-messenger/Dockerfile.langdock -t itakeit-messenger-langdock itakeit-messenger`
 
   const curl = `curl -s -H "Authorization: Bearer $MESSENGER_HTTP_TOKEN" -d '{"text":"The nightly export has failed three times, can someone look?","source":"cron"}' http://127.0.0.1:8080/messages`
 
@@ -98,7 +109,12 @@ sources:
 
   <section id="setup" class="wrap setup">
     <h2>Setup</h2>
-    <p class="sub">About ten minutes. You need a channel running <a href={itakeit}>itakeit</a>, a Claude login, and a machine that runs Docker.</p>
+    <div class="picker" role="radiogroup" aria-label="Model backend">
+      <span>Backend</span>
+      <label class:on={!langdock}><input type="radio" name="backend" value="claude-code" bind:group={backend} />claude-code</label>
+      <label class:on={langdock}><input type="radio" name="backend" value="langdock" bind:group={backend} />langdock</label>
+    </div>
+    <p class="sub">About ten minutes. You need a channel running <a href={itakeit}>itakeit</a>, {#if langdock}a Langdock API key{:else}a Claude login{/if}, and a machine that runs Docker.</p>
 
     <ol class="steps">
       <li>
@@ -122,22 +138,39 @@ sources:
         <h3>Write config.yaml</h3>
         <p>Start from <a href="{repo}/blob/main/config.example.yaml">config.example.yaml</a>. <code>target_channel</code> is the ID of the itakeit channel. <code>criteria</code> sharpens what counts as a task for your team. <code>knowledge</code> is optional background about your tools, such as how to treat a Grafana alert. <code>tasks</code> and <code>reminders</code> switch the two outputs independently; at least one must be on.</p>
         <Code code={config} label="config.yaml" />
+        {#if langdock}
+          <p>Add the backend keys to the same file.</p>
+          <Code code={langdockConfig} label="config.yaml" />
+        {/if}
       </li>
       <li>
-        <h3>Log in to Claude</h3>
-        <p>Run <code>claude auth login</code>, or <code>claude setup-token</code> once and keep the token as <code>CLAUDE_CODE_OAUTH_TOKEN</code>. To bill the API instead, set <code>backend: api</code> and pass <code>ANTHROPIC_API_KEY</code>. The messenger checks the login at start and refuses to run without it.</p>
+        {#if langdock}
+          <h3>Get a Langdock API key</h3>
+          <p>Create an API key in your Langdock workspace and keep it as <code>LANGDOCK_API_KEY</code>. Set <code>model</code> to a model ID from the workspace, and <code>langdock_region</code> to <code>eu</code> or <code>us</code> to match it. The messenger calls Langdock’s OpenAI-compatible API, so any model of the workspace works, and refuses to run without the key.</p>
+        {:else}
+          <h3>Log in to Claude</h3>
+          <p>Run <code>claude auth login</code>, or <code>claude setup-token</code> once and keep the token as <code>CLAUDE_CODE_OAUTH_TOKEN</code>. To bill the API instead, set <code>backend: api</code> and pass <code>ANTHROPIC_API_KEY</code>. The messenger checks the login at start and refuses to run without it.</p>
+        {/if}
       </li>
       <li>
         <h3>Run the container</h3>
-        <p>Export the tokens, then start the published image from the directory with <code>config.yaml</code>.</p>
-        <Code code={'export MESSENGER_SLACK_BOT_TOKEN=xoxb-... MESSENGER_SLACK_APP_TOKEN=xapp-... CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...'} label="shell" />
-        <Code code={run} label="shell" />
-        <p>Or build the binary yourself and run <code>bin/itakeit-messenger -config config.yaml</code>:</p>
-        <Code code={build} label="shell" />
+        {#if langdock}
+          <p>Export the tokens, then start the Langdock image from the directory with <code>config.yaml</code>. It has no Claude Code CLI and no Node, so a config with <code>backend: claude-code</code> fails its start check there.</p>
+          <Code code={'export MESSENGER_SLACK_BOT_TOKEN=xoxb-... MESSENGER_SLACK_APP_TOKEN=xapp-... LANGDOCK_API_KEY=...'} label="shell" />
+          <Code code={langdockRun} label="shell" />
+          <p>Or build the image yourself and run it in place of the image name above:</p>
+          <Code code={langdockBuild} label="shell" />
+        {:else}
+          <p>Export the tokens, then start the published image from the directory with <code>config.yaml</code>.</p>
+          <Code code={'export MESSENGER_SLACK_BOT_TOKEN=xoxb-... MESSENGER_SLACK_APP_TOKEN=xapp-... CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...'} label="shell" />
+          <Code code={run} label="shell" />
+          <p>Or build the binary yourself and run <code>bin/itakeit-messenger -config config.yaml</code>:</p>
+          <Code code={build} label="shell" />
+        {/if}
       </li>
       <li>
         <h3>Check it</h3>
-        <p>Post a request in a channel it reads, such as “can someone look at the failing export?”. A task appears in the target channel. A setup problem (login, config, a channel it cannot read) stops it at startup with an error that names the fix.</p>
+        <p>Post a request in a channel it reads, such as “can someone look at the failing export?”. A task appears in the target channel. A setup problem ({#if langdock}API key{:else}login{/if}, config, a channel it cannot read) stops it at startup with an error that names the fix.</p>
       </li>
     </ol>
 
@@ -254,6 +287,12 @@ sources:
   .steps > li::before { content: counter(step); position: absolute; left: -1.25rem; top: -0.2rem; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; font: 700 1.1rem var(--mono); background: var(--green); color: #fff; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
   .steps h3 { margin: 0 0 0.4rem; font-size: 1.2rem; }
   .steps p { margin: 0 0 0.6rem; }
+  .picker { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0 0 0.8rem; }
+  .picker span { font-weight: 600; margin-right: 0.3rem; }
+  .picker label { cursor: pointer; font: 600 0.9rem var(--mono); padding: 0.3rem 0.8rem; background: var(--panel); border: 2px solid var(--ink); }
+  .picker label.on { background: var(--green); color: #fff; box-shadow: 3px 3px 0 var(--ink); }
+  .picker input { position: absolute; opacity: 0; pointer-events: none; }
+  .picker label:has(input:focus-visible) { outline: 3px solid var(--orange); outline-offset: 2px; }
   details { margin: 0.4rem 0 0.8rem; }
   summary { cursor: pointer; font-weight: 600; color: var(--green-dark); }
   .note { max-width: 820px; background: #fff3e6; border: 2px solid var(--ink); border-left: 8px solid var(--orange); padding: 1rem 1.2rem; }
