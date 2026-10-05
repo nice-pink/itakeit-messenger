@@ -29,6 +29,8 @@ A message is classified once: redelivery of the same Slack message or the same H
 docker run -d --name itakeit-messenger --restart unless-stopped -e MESSENGER_SLACK_BOT_TOKEN -e MESSENGER_SLACK_APP_TOKEN -e CLAUDE_CODE_OAUTH_TOKEN -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messenger:latest
 ```
 
+`latest` follows `main`. Release tags `vX.Y.Z` also publish `X.Y.Z` and `X.Y`, and every build publishes `sha-<short>`, for linux/amd64 and linux/arm64. With `backend: langdock` run `ghcr.io/nice-pink/itakeit-messenger-langdock` (same tags, or build `Dockerfile.langdock`) instead. It has no Claude Code CLI and no Node, so it is small, and a config with `backend: claude-code` fails its start probe there. Pass `LANGDOCK_API_KEY` instead of `CLAUDE_CODE_OAUTH_TOKEN`.
+
 `examples/` has a Docker Compose file and a Kubernetes kustomization, both with a read-only root filesystem and writable `/tmp` and `/home/node`, which the Claude CLI needs on every call.
 
 | Scope | Used for |
