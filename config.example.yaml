@@ -49,6 +49,19 @@ criteria: |
 reminders: true
 timezone: Europe/Berlin
 
+# true: a posted task ends with "by @author", which pings them. For a message from a
+# bot it is the bot_contact below, and without one nobody is mentioned. http and
+# stdin messages have no Slack user to mention.
+mention_author: false
+
+# Slack user ID (not a name) a reminder, and with mention_author a task, is addressed to when the message comes from a
+# bot or integration, which needs sources.slack.include_bots: true. A human's reminder
+# addresses the human. Without a contact the reminder mentions nobody. bot_contacts
+# overrides it per channel ID. Same keys as in itakeit.
+# bot_contact: U0123456789
+# bot_contacts:
+#   C0123456789: U0123456789
+
 # Extra environment variables for the claude CLI. It gets only what it needs
 # (PATH, HOME, proxies, CLAUDE_CODE_*, ...), never the Slack or HTTP tokens.
 env: []

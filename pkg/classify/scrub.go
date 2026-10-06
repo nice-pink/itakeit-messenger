@@ -61,7 +61,7 @@ func (c *Classifier) Probe(ctx context.Context) (refused bool, err error) {
 // scrub removes the secrets from the model's text, ignoring case.
 func (c *Classifier) scrub(v *Verdict) {
 	var hit bool
-	for _, f := range []*string{&v.Title, &v.Summary, &v.Reason, &v.RemindText} {
+	for _, f := range []*string{&v.Title, &v.Summary, &v.Reason, &v.RemindText, &v.RemindFor} {
 		for _, s := range c.secret {
 			if re := regexp.MustCompile("(?i)" + regexp.QuoteMeta(s)); re.MatchString(*f) {
 				*f, hit = re.ReplaceAllString(*f, "[redacted]"), true

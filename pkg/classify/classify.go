@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -24,6 +25,7 @@ type Verdict struct {
 	Reminder   bool   `json:"reminder" jsonschema_description:"true when the message asks to be reminded, or sets a follow-up, at a specific time"`
 	RemindAt   string `json:"remind_at" jsonschema_description:"local time as YYYY-MM-DDTHH:MM in the given timezone; empty when reminder is false"`
 	RemindText string `json:"remind_text" jsonschema_description:"short self-contained text of what to be reminded of; empty when reminder is false"`
+	RemindFor  string `json:"remind_for" jsonschema_description:"Slack user ID the reminder is for: the ID in the from attribute when the sender asks to be reminded (me, I, a follow-up for themselves), or the ID of the user mentioned as <@ID> when the sender asks to remind that person; empty when reminder is false"`
 	// Due is RemindAt parsed and checked by Classify. Reminder is false when the time was unusable.
 	Due time.Time `json:"-"`
 }
@@ -51,7 +53,7 @@ Background knowledge about this team and its tools, written by its operators. Us
 
 	reminderPrompt = `
 
-A message can also contain a reminder: its author asks to be reminded of something, or sets a follow-up for themselves, at a specific time ("remind me on Friday", "ping me tomorrow at 9", "check again in two days"). Set reminder, remind_at and remind_text. The user message gives the current local time and timezone: resolve relative expressions from it and write remind_at as YYYY-MM-DDTHH:MM in that timezone. A date without a time means 09:00. If the time is vague or missing, set reminder to false: never guess a time. A message can be a task, a reminder, both or neither.`
+A message can also contain a reminder: its author asks to be reminded of something, sets a follow-up for themselves, or asks to remind a mentioned person, at a specific time ("remind me on Friday", "ping me tomorrow at 9", "check again in two days"). Set reminder, remind_at and remind_text. The user message gives the current local time and timezone: resolve relative expressions from it and write remind_at as YYYY-MM-DDTHH:MM in that timezone. A date without a time means 09:00. Set remind_for to whom the reminder is for: "me", "I" and a follow-up without a named person mean the sender, whose Slack user ID is the from attribute of the message; "remind @anna" means the user mentioned as <@ID> in the message. Never use an ID that is neither. If the time is vague or missing, set reminder to false: never guess a time. A message can be a task, a reminder, both or neither.`
 )
 
 type Classifier struct {
@@ -98,6 +100,9 @@ const (
 
 const maxRunes = 8000
 
+// maxRemindRunes keeps the confirmation under the 3000 characters of a Slack section.
+const maxRemindRunes = 500
+
 func (c *Classifier) Classify(ctx context.Context, text, author, origin string) (Verdict, error) {
 	if utf8.RuneCountInString(text) > maxRunes {
 		text = string([]rune(text)[:maxRunes]) + " [cut]"
@@ -129,6 +134,7 @@ func (c *Classifier) Classify(ctx context.Context, text, author, origin string) 
 		return Verdict{}, errors.New("model returned a task without title or summary")
 	}
 	v.Reminder = v.Reminder && c.loc != nil && c.due(&v, now)
+	v.RemindFor = remindFor(v.RemindFor, text, author)
 	return v, nil
 }
 
@@ -147,10 +153,31 @@ func schemaOf(dest any) (string, error) {
 	return string(f.Schema), nil
 }
 
+var mention = regexp.MustCompile(`<@([UW][A-Z0-9]+)(?:\|[^>]*)?>`)
+
+// remindFor accepts the model's target only when it is the author or a user the
+// message mentions, so a message cannot have a reminder pinged at anyone else.
+// Anything else means the author.
+func remindFor(id, text, author string) string {
+	id = strings.TrimSpace(id)
+	if id == author {
+		return author
+	}
+	for _, m := range mention.FindAllStringSubmatch(text, -1) {
+		if m[1] == id {
+			return id
+		}
+	}
+	return author
+}
+
 // due parses the reminder time into v.Due and reports whether Slack can schedule
 // it. An unusable reminder is dropped, not an error: the task, if any, stands.
 func (c *Classifier) due(v *Verdict, now time.Time) bool {
 	v.RemindText = strings.TrimSpace(v.RemindText)
+	if r := []rune(v.RemindText); len(r) > maxRemindRunes {
+		v.RemindText = string(r[:maxRemindRunes-1]) + "…"
+	}
 	t, err := parseTime(v.RemindAt, c.loc)
 	if err != nil || v.RemindText == "" || t.Before(now.Add(minLead)) || t.After(now.Add(maxLead)) {
 		slog.Info("reminder dropped", "remind_at", v.RemindAt, "text", v.RemindText)

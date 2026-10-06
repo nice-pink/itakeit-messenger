@@ -51,6 +51,12 @@ type Config struct {
 	// reminded at a time. Timezone (IANA name) is how the model reads that time.
 	Reminders bool   `yaml:"reminders"`
 	Timezone  string `yaml:"timezone"`
+	// MentionAuthor ends a posted task with a mention of the message's author.
+	MentionAuthor bool `yaml:"mention_author"`
+	// BotContact is a Slack user ID that reminders, and with MentionAuthor tasks, from
+	// bot messages are addressed to, as in itakeit. BotContacts overrides it per channel ID.
+	BotContact  string            `yaml:"bot_contact"`
+	BotContacts map[string]string `yaml:"bot_contacts"`
 	// RecoverMessages is how many of the target channel's latest messages are read
 	// on start to find tasks already posted, at most 999. 0 or negative disables it.
 	RecoverMessages int     `yaml:"recover_messages"`
@@ -78,6 +84,7 @@ type HTTP struct {
 }
 
 var channelID = regexp.MustCompile(`^[CG][A-Z0-9]{8,}$`)
+var userID = regexp.MustCompile(`^[UW][A-Z0-9]{6,}$`)
 
 func Load(path string) (*Config, error) {
 	raw, err := os.ReadFile(path)
@@ -157,7 +164,29 @@ func (c *Config) validate() error {
 	if slices.Contains(s.Slack.Channels, c.TargetChannel) {
 		errs = append(errs, errors.New("sources.slack.channels contains target_channel: tasks would be read back and posted again"))
 	}
+	c.BotContact = strings.TrimSpace(c.BotContact)
+	if c.BotContact != "" && !userID.MatchString(c.BotContact) {
+		errs = append(errs, fmt.Errorf("bot_contact %q is not a Slack user ID (like U0123456789, from the profile's more menu -> Copy member ID)", c.BotContact))
+	}
+	for ch, u := range c.BotContacts {
+		if !channelID.MatchString(ch) {
+			errs = append(errs, fmt.Errorf("bot_contacts key %q is not a channel ID (like C0123456789)", ch))
+		}
+		if u = strings.TrimSpace(u); !userID.MatchString(u) {
+			errs = append(errs, fmt.Errorf("bot_contacts[%s] %q is not a Slack user ID (like U0123456789)", ch, u))
+		}
+		c.BotContacts[ch] = u
+	}
 	return errors.Join(errs...)
+}
+
+// BotContactFor is the user a reminder from a bot message in channel is addressed
+// to: its bot_contacts entry, else bot_contact, else "" (nobody is mentioned).
+func (c *Config) BotContactFor(channel string) string {
+	if u := c.BotContacts[channel]; u != "" {
+		return u
+	}
+	return c.BotContact
 }
 
 // SlackReads reports whether the Slack source reads channel. The target channel

@@ -7,8 +7,8 @@
   const features = [
     { title: 'Reads where people write', text: 'Top-level messages from the Slack channels it is in, a POST /messages endpoint for alerts and forms, or lines on standard input. All three go through the same pipeline.' },
     { title: 'Asks Claude, with no tools', text: 'Each message long enough to matter goes to Claude with no tools, no MCP servers and no settings. A message that tries to steer the model has nothing to act with.' },
-    { title: 'Posts a task that stands alone', text: 'A bold title, a short summary and a link to the original, posted to the itakeit channel. Nobody is mentioned, and model text is escaped so it cannot ping @channel.' },
-    { title: 'Reminds in the thread', text: '“Remind me on Friday to send the invoice” becomes a scheduled reply under the original message, mentioning the author. Vague times create no reminder.' },
+    { title: 'Posts a task that stands alone', text: 'A bold title, a short summary and a link to the original, posted to the itakeit channel. Model text is escaped so it cannot ping @channel, and nobody is mentioned unless mention_author is on.' },
+    { title: 'Reminds in the thread', text: '“Remind me on Friday to send the invoice” becomes a scheduled reply under the original message, mentioning who it is for, and a confirmation with a Delete button appears in the thread. Vague times create no reminder.' },
     { title: 'Counts a message once', text: 'Redelivery of the same Slack message or HTTP id is dropped. Each posted task carries a hash of its source key in invisible message metadata.' },
     { title: 'No database', text: 'On start it reads the last messages of the target channel and takes the keys of its own tasks from there, so a restart does not post a task twice.' },
     { title: 'Plugs into itakeit', text: 'It never talks to itakeit. itakeit sees a message like any other, so claims, status and reminders work, and itakeit-agent can pick the task up.' },
@@ -26,6 +26,7 @@ criteria: |
   notices and alerts that resolved themselves.
 reminders: true
 timezone: Europe/Berlin
+mention_author: false         # true: a task ends with "by @author" (the contact for a bot)
 sources:
   slack:
     enabled: true
@@ -212,10 +213,11 @@ langdock_region: eu          # eu (default) or us`
     <h2>Reminders</h2>
     <p class="sub">On by default. Independent of tasks: a message can be a task, a reminder, both or neither.</p>
     <div class="points">
-      <p><b>A scheduled reply.</b> A message such as “remind me on Friday to send the invoice” gets a reply under it at that time, from the messenger’s bot, mentioning the author: <code>Reminder for @anna: send the invoice</code>. Slack’s own reminders API is retired and cannot remind other users, so a scheduled reply is used.</p>
+      <p><b>A scheduled reply.</b> A message such as “remind me on Friday to send the invoice” gets a reply under it at that time, from the messenger’s bot, mentioning who it is for: <code>Reminder for @anna: send the invoice</code>. “Me” is the author, “remind @bob” is bob. Slack’s own reminders API is retired and cannot remind other users, so a scheduled reply is used.</p>
       <p><b>It never guesses.</b> Relative times resolve against the current time in <code>timezone</code>. A vague or missing time creates no reminder, as does a time in the past or more than 120 days ahead, which is Slack’s limit. A date without a time means 09:00.</p>
       <p><b>Slack messages only.</b> An HTTP or stdin message has no Slack message to reply under. A reply under the task the messenger posted would come from the user itakeit records as the task’s reporter, which clears a needs-info status and pings the owners.</p>
-      <p><b>No cancelling.</b> It skips a reminder its app already has scheduled for the same channel, time and text, so a restart does not remind twice. A differently worded repeat still does. If the original message is deleted or the work is done early, the reminder still posts.</p>
+      <p><b>Confirmation and Delete.</b> Right after scheduling, the messenger replies in the thread with <code>Reminder scheduled for Fri 10:00: send the invoice</code> and a Delete button. Only the person it is for and the message’s author can press it, and Slack allows it until shortly before the reminder is due. Interactivity must be on in the Slack app, which the manifest does.</p>
+      <p><b>No duplicates.</b> It skips a reminder its app already has scheduled for the same channel, time and text, so a restart does not remind twice. A differently worded repeat still does.</p>
       <p><b>Reminders only.</b> With <code>tasks: false</code> nothing is posted to a channel, <code>target_channel</code> is optional, and only the Slack source is allowed.</p>
     </div>
   </section>

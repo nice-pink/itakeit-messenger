@@ -65,3 +65,15 @@ func TestZeroIsExplicit(t *testing.T) {
 		t.Fatalf("c=%+v err=%v", c, err)
 	}
 }
+
+func TestBotContacts(t *testing.T) {
+	c, err := Parse([]byte("target_channel: C0123456789\nsources: {stdin: true}\nbot_contact: \" U0123ABCD \"\nbot_contacts:\n  C0456EFGHI: U0456EFGH"))
+	if err != nil || c.BotContactFor("C0456EFGHI") != "U0456EFGH" || c.BotContactFor("C9") != "U0123ABCD" {
+		t.Fatalf("%+v %v", c, err)
+	}
+	for _, y := range []string{"bot_contact: anna", "bot_contacts: {general: U0456EFGH}", "bot_contacts: {C0456EFGHI: anna}"} {
+		if _, err := Parse([]byte("target_channel: C0123456789\nsources: {stdin: true}\n" + y)); err == nil {
+			t.Errorf("%q accepted", y)
+		}
+	}
+}

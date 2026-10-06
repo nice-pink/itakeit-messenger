@@ -19,6 +19,8 @@ type Slack struct {
 	Cfg    *config.Config
 	UserID string
 	BotID  string
+	// Interact receives the button presses of the messenger's own messages. May be nil.
+	Interact func(ctx context.Context, cb slack.InteractionCallback)
 }
 
 func (s *Slack) Name() string { return "slack" }
@@ -38,6 +40,20 @@ func (s *Slack) Run(ctx context.Context, sink messenger.Sink) error {
 				slog.Info("connected to slack")
 			case socketmode.EventTypeConnectionError:
 				slog.Warn("slack connection error, retrying", "data", evt.Data)
+			case socketmode.EventTypeInteractive:
+				if evt.Request != nil {
+					s.SM.Ack(*evt.Request)
+				}
+				if cb, ok := evt.Data.(slack.InteractionCallback); ok && s.Interact != nil {
+					go func() {
+						defer func() {
+							if r := recover(); r != nil {
+								slog.Error("interaction handler panicked", "panic", r)
+							}
+						}()
+						s.Interact(ctx, cb)
+					}()
+				}
 			case socketmode.EventTypeEventsAPI:
 				if evt.Request != nil {
 					s.SM.Ack(*evt.Request)
@@ -73,6 +89,11 @@ func (s *Slack) Accept(ev *slackevents.MessageEvent) (messenger.Message, bool) {
 	if author == "" {
 		author = ev.BotID
 	}
+	// Bots have no user to remind: use the channel's contact, if any.
+	user := ev.User
+	if user == "" {
+		user = s.Cfg.BotContactFor(ev.Channel)
+	}
 	thread := &messenger.Thread{Channel: ev.Channel, TS: ev.TimeStamp}
 	ch, ts := ev.Channel, ev.TimeStamp
 	return messenger.Message{
@@ -80,7 +101,7 @@ func (s *Slack) Accept(ev *slackevents.MessageEvent) (messenger.Message, bool) {
 		ID:     ch + ":" + ts,
 		Text:   ev.Text,
 		Author: author,
-		User:   ev.User,
+		User:   user,
 		Thread: thread,
 		Origin: "<#" + ch + ">",
 		Link: func() string {

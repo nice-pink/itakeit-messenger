@@ -97,6 +97,7 @@ func run(cfgPath string, debug bool) error {
 		cl.WithReminders(loc)
 	}
 	p := messenger.New(cl, slackPoster{api: api}, cfg.TargetChannel, cfg.MinChars, cfg.MaxParallel)
+	p.MentionAuthor = cfg.MentionAuthor
 	if cfg.Reminders {
 		p.Scheduler = slackPoster{api: api}
 	}
@@ -112,7 +113,7 @@ func run(cfgPath string, debug bool) error {
 
 	var sources []messenger.Source
 	if cfg.Sources.Slack.Enabled {
-		sources = append(sources, &source.Slack{API: api, SM: socketmode.New(api, socketmode.OptionDebug(debug)), Cfg: cfg, UserID: auth.UserID, BotID: auth.BotID})
+		sources = append(sources, &source.Slack{API: api, SM: socketmode.New(api, socketmode.OptionDebug(debug)), Cfg: cfg, UserID: auth.UserID, BotID: auth.BotID, Interact: slackPoster{api: api}.HandleAction})
 	}
 	if cfg.Sources.HTTP.Enabled {
 		sources = append(sources, &source.HTTP{Listen: cfg.Sources.HTTP.Listen, Token: os.Getenv("MESSENGER_HTTP_TOKEN")})

@@ -42,6 +42,17 @@ func TestSlackAccept(t *testing.T) {
 		t.Errorf("reminder target: %+v", m)
 	}
 	cfg.Sources.Slack.IncludePrivate, cfg.Sources.Slack.IncludeBots = true, true
+	cfg.BotContact, cfg.BotContacts = "UDEFAULT1", map[string]string{"C2": "UCHANNEL1"}
+	for ch, want := range map[string]string{"C1": "UDEFAULT1", "C2": "UCHANNEL1"} {
+		ev := base
+		ev.BotID, ev.SubType, ev.User, ev.Channel = "B2", "bot_message", "", ch
+		if m, ok := s.Accept(&ev); !ok || m.User != want || m.Author != "B2" {
+			t.Errorf("bot in %s: %+v ok=%v, want contact %s", ch, m, ok, want)
+		}
+	}
+	if m, _ := s.Accept(&base); m.User != "U1" {
+		t.Errorf("a human is addressed, not the bot contact: %+v", m)
+	}
 	for _, mod := range []func(*slackevents.MessageEvent){
 		func(e *slackevents.MessageEvent) { e.ChannelType = "group" },
 		func(e *slackevents.MessageEvent) { e.BotID = "B2"; e.SubType = "bot_message"; e.User = "" },

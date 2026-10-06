@@ -126,3 +126,24 @@ func TestKnowledge(t *testing.T) {
 		}
 	}
 }
+
+func TestRemindFor(t *testing.T) {
+	text := "remind <@U2> and <@W3|bob> friday"
+	if got := remindFor("U2", "no mention", "B2"); got != "B2" {
+		t.Errorf("unmentioned target accepted for a bot: %q", got)
+	}
+	for id, want := range map[string]string{"U1": "U1", "": "U1", "U2": "U2", "W3": "W3", "U9": "U1", "<@U2>": "U1", "B2": "U1"} {
+		if got := remindFor(id, text, "U1"); got != want {
+			t.Errorf("remindFor(%q) = %q, want %q", id, got, want)
+		}
+	}
+}
+
+func TestRemindTextIsCapped(t *testing.T) {
+	now := time.Date(2026, 10, 6, 8, 0, 0, 0, time.UTC)
+	c := &Classifier{loc: time.UTC}
+	v := Verdict{RemindAt: "2026-10-09T09:00", RemindText: strings.Repeat("ä", 2000)}
+	if !c.due(&v, now) || len([]rune(v.RemindText)) != maxRemindRunes || !strings.HasSuffix(v.RemindText, "…") {
+		t.Fatalf("%d runes", len([]rune(v.RemindText)))
+	}
+}

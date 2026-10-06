@@ -28,7 +28,8 @@ type Message struct {
 	// Origin is posted as written: a Slack reference such as <#C0123> or text the
 	// source has already passed through Escape.
 	Origin string
-	// User is the Slack user ID a reminder mentions. Empty for bots and other sources.
+	// User is the Slack user ID a reminder mentions: the author, or for a bot the
+	// channel's bot contact. Empty without one and for other sources.
 	User string
 	// Thread is the Slack message a reminder is posted under. Without it the
 	// message's reminder is dropped.
@@ -64,7 +65,12 @@ type Poster interface {
 
 // Scheduler posts text as a reply under thread at the given time.
 type Scheduler interface {
-	Schedule(ctx context.Context, t Thread, at time.Time, text string) error
+	// Schedule returns the ID of the scheduled message, or "" when an identical
+	// reminder was already scheduled.
+	Schedule(ctx context.Context, t Thread, at time.Time, text string) (id string, err error)
+	// Confirm replies under t that the reminder id is scheduled, with a button
+	// that deletes it. Only the users may press it.
+	Confirm(ctx context.Context, t Thread, id, text string, users []string) error
 }
 
 // Recent lists the keys of the last n tasks this app posted to channel.
@@ -93,6 +99,8 @@ type Pipeline struct {
 	sem     chan struct{}
 	queue   chan Message
 	ctx     context.Context
+	// MentionAuthor adds a mention of the message's author to a posted task.
+	MentionAuthor bool
 	// Scheduler is nil when reminders are off.
 	Scheduler Scheduler
 	// Now is the clock; tests replace it.
@@ -197,7 +205,7 @@ func (p *Pipeline) process(ctx context.Context, m Message) (Decision, error) {
 	d := Decision{Task: v.Task, Title: v.Title, Reason: v.Reason}
 	slog.Info("classified", "source", m.Source, "id", m.ID, "task", v.Task, "reminder", remind, "reason", v.Reason)
 	if v.Task {
-		if _, err = p.poster.Post(ctx, p.channel, Format(v, m), key(m)); err != nil {
+		if _, err = p.poster.Post(ctx, p.channel, Format(v, m, p.MentionAuthor), key(m)); err != nil {
 			return d, fmt.Errorf("post task: %w", err)
 		}
 		d.Posted = true
@@ -222,7 +230,7 @@ func (p *Pipeline) process(ctx context.Context, m Message) (Decision, error) {
 	return d, nil
 }
 
-// remind schedules the reply under the source Slack message. Other sources have
+// remind schedules the reply under the source Slack message and confirms it in the thread. Other sources have
 // none: a reply under the task posted for them would come from the same bot user
 // that itakeit records as the task's reporter, and a reporter's reply on a
 // needs-info task clears that status and pings the owners.
@@ -239,11 +247,42 @@ func (p *Pipeline) remind(ctx context.Context, m Message, v classify.Verdict) er
 	if v.Due.Sub(p.Now()) < 10*time.Second {
 		return errTooLate
 	}
-	text := "Reminder"
-	if m.User != "" {
-		text += " for <@" + m.User + ">"
+	who := v.RemindFor
+	if who == m.Author {
+		who = m.User
 	}
-	return p.Scheduler.Schedule(ctx, *m.Thread, v.Due, text+": "+Escape(v.RemindText))
+	text := "Reminder"
+	if who != "" {
+		text += " for <@" + who + ">"
+	}
+	body := Escape(v.RemindText)
+	id, err := p.Scheduler.Schedule(ctx, *m.Thread, v.Due, text+": "+body)
+	if err != nil || id == "" {
+		return err
+	}
+	slog.Info("reminder scheduled", "source", m.Source, "id", m.ID, "at", v.Due, "for", who)
+	// A confirmation that fails is only logged: the reminder is scheduled, and a retry would schedule it twice.
+	conf := text
+	if who == m.User {
+		conf = "Reminder"
+	}
+	conf += " scheduled for " + when(v.Due, p.Now()) + ": " + body
+	users := []string{who}
+	if m.User != who {
+		users = append(users, m.User)
+	}
+	if err := p.Scheduler.Confirm(ctx, *m.Thread, id, conf, slices.DeleteFunc(users, func(u string) bool { return u == "" })); err != nil {
+		slog.Warn("reminder confirmation not posted", "source", m.Source, "id", m.ID, "err", err)
+	}
+	return nil
+}
+
+// when is the due time as a person says it: weekday, time and the configured timezone, with the date once it is more than a week away.
+func when(due, now time.Time) string {
+	if due.Sub(now) > 6*24*time.Hour {
+		return due.Format("Mon 2 Jan 15:04 MST")
+	}
+	return due.Format("Mon 15:04 MST")
 }
 
 // key is what the channel remembers about a posted task: a hash, so it is
@@ -306,8 +345,9 @@ func (p *Pipeline) forget(key string) {
 }
 
 // Format is the task message. Model text is escaped so it cannot ping @channel
-// or user groups, and the author is not mentioned, so posting never notifies them.
-func Format(v classify.Verdict, m Message) string {
+// or user groups. With mention it ends with a mention of m.User (the author, or
+// for a bot the channel's bot contact), which pings them.
+func Format(v classify.Verdict, m Message, mention bool) string {
 	title := strings.NewReplacer("*", "", "\n", " ").Replace(Escape(v.Title))
 	var b strings.Builder
 	fmt.Fprintf(&b, "*%s*\n%s\n\n", title, Escape(v.Summary))
@@ -315,13 +355,17 @@ func Format(v classify.Verdict, m Message) string {
 	if from == "" {
 		from = m.Source
 	}
+	by := ""
+	if mention && m.User != "" {
+		by = " by <@" + m.User + ">"
+	}
 	if m.Link != nil {
 		if l := m.Link(); safeURL(l) {
-			fmt.Fprintf(&b, "From <%s|a message> in %s", l, from)
+			fmt.Fprintf(&b, "From <%s|a message> in %s%s", l, from, by)
 			return b.String()
 		}
 	}
-	fmt.Fprintf(&b, "From %s", from)
+	fmt.Fprintf(&b, "From %s%s", from, by)
 	return b.String()
 }
 
