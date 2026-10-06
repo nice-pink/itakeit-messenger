@@ -27,10 +27,14 @@ criteria: |
 reminders: true
 timezone: Europe/Berlin
 mention_author: false         # true: a task ends with "by @author" (the contact for a bot)
+bot_contact: U0123456789      # Slack user ID reminded, and mentioned, for messages from bots
+bot_contacts:                 # optional, per channel ID, overrides bot_contact
+  C0123456789: U0456789012
 sources:
   slack:
     enabled: true
     channels: []              # empty: every channel the app is in
+    include_bots: true        # bot messages are only read with this
   http:
     enabled: false
     listen: 127.0.0.1:8080`
@@ -137,7 +141,7 @@ langdock_region: eu          # eu (default) or us`
       </li>
       <li>
         <h3>Write config.yaml</h3>
-        <p>Start from <a href="{repo}/blob/main/config.example.yaml">config.example.yaml</a>. <code>target_channel</code> is the ID of the itakeit channel. <code>criteria</code> sharpens what counts as a task for your team. <code>knowledge</code> is optional background about your tools, such as how to treat a Grafana alert. <code>tasks</code> and <code>reminders</code> switch the two outputs independently; at least one must be on.</p>
+        <p>Start from <a href="{repo}/blob/main/config.example.yaml">config.example.yaml</a>. <code>target_channel</code> is the ID of the itakeit channel. <code>criteria</code> sharpens what counts as a task for your team. <code>knowledge</code> is optional background about your tools, such as how to treat a Grafana alert. <code>tasks</code> and <code>reminders</code> switch the two outputs independently; at least one must be on. <code>bot_contact</code> is the Slack user ID a reminder (and, with <code>mention_author</code>, a task) is addressed to when the message comes from a bot, as in itakeit; <code>bot_contacts</code> overrides it per channel ID. Without one, a bot’s message mentions nobody.</p>
         <Code code={config} label="config.yaml" />
         {#if langdock}
           <p>Add the backend keys to the same file.</p>
