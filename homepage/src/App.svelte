@@ -82,7 +82,10 @@ langdock_region: eu          # eu (default) or us`
 <main id="top">
   <section class="hero wrap">
     <div class="pitch">
-      <img class="turtle" src="./turtle-post.png" alt="pixel turtle in a postal cap carrying an envelope" width="1268" height="1240" />
+      <div class="says">
+        <img class="turtle" src="./turtle-post.png" alt="pixel turtle in a postal cap carrying an envelope" width="1268" height="1240" />
+        <img class="bubble" src="./whattodo.png" alt="Just want to know what to do." width="1536" height="1024" />
+      </div>
       <h1>The tasks in your messages. <span>Posted to itakeit.</span></h1>
       <p class="lead"><b>itakeit-messenger</b> reads messages from Slack channels, HTTP and standard input, asks Claude whether each contains a task, and posts the tasks to the channel <a href={itakeit}>itakeit</a> serves. It also sets reminders in the thread when a message asks for one. Nobody has to copy a request into the task channel by hand.</p>
       <div class="cta">
@@ -265,7 +268,9 @@ langdock_region: eu          # eu (default) or us`
   nav a:hover { color: var(--green); }
 
   .hero { display: grid; grid-template-columns: 1fr 1.05fr; gap: 3rem; align-items: center; padding-top: 3rem; padding-bottom: 4rem; }
-  .turtle { width: 170px; height: auto; image-rendering: pixelated; margin: 0 0 1rem -8px; }
+  .says { display: flex; align-items: flex-end; margin: 0 0 1rem; }
+  .turtle { width: 170px; height: auto; image-rendering: pixelated; margin: 0 0 0 -8px; flex: none; }
+  .bubble { width: 300px; max-width: 55%; height: auto; image-rendering: pixelated; margin: 0 0 1.5rem -1.5rem; }
   h1 { font: 800 clamp(2.2rem, 5vw, 3.5rem)/1.05 var(--sans); letter-spacing: -0.03em; margin: 0 0 1rem; }
   h1 span { color: var(--green); display: block; }
   .lead { font-size: 1.15rem; color: var(--muted); margin: 0 0 1.5rem; max-width: 34rem; }
@@ -327,6 +332,7 @@ langdock_region: eu          # eu (default) or us`
     .hero, .split { grid-template-columns: 1fr; gap: 2rem; }
     .hero { padding-top: 1.5rem; }
     .turtle { width: 120px; }
+    .bubble { width: 230px; margin-left: -0.5rem; }
     nav { gap: 0.8rem; }
     nav a { font-size: 0.85rem; }
   }
