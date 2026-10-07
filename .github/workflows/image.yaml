@@ -38,7 +38,8 @@ concurrency:
 
 jobs:
   image:
-    # itakeit-messenger with the Claude Code CLI, and itakeit-messenger-langdock for backend langdock.
+    # itakeit-messenger with the Claude Code CLI, itakeit-messenger-langdock for backend langdock, and
+    # itakeit-messenger-openai for backend openai.
     strategy:
       fail-fast: false
       matrix:
@@ -47,6 +48,8 @@ jobs:
             suffix: ''
           - dockerfile: Dockerfile.langdock
             suffix: -langdock
+          - dockerfile: Dockerfile.openai
+            suffix: -openai
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

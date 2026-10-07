@@ -13,12 +13,16 @@ target_channel: C0123456789
 # api: the Messages API with ANTHROPIC_API_KEY. Billed to the Console organization.
 # langdock: Langdock's OpenAI-compatible API with LANGDOCK_API_KEY and any model of the
 #   workspace (model: a name from its model list). langdock_region: eu (default) or us.
+# openai: OpenAI's chat completions API with OPENAI_API_KEY and any model of the account
+#   (model is then required). openai_base_url points it at a compatible server (vLLM,
+#   SGLang, Ollama, e.g. Qwen); OPENAI_API_KEY is then optional.
 backend: claude-code
-# The claude executable to run. Only backend claude-code reads it; api and langdock ignore it.
+# The claude executable to run. Only backend claude-code reads it; the other backends ignore it.
 claude_bin: claude
 # langdock_region: eu
+# openai_base_url: https://api.openai.com/v1
 
-# Default sonnet for claude-code (a CLI alias) and claude-sonnet-5-5 for api. Required for langdock.
+# Default sonnet for claude-code (a CLI alias) and claude-sonnet-5-5 for api. Required for langdock and openai.
 # Every message that passes min_chars costs one call, so a small model fits.
 # model: sonnet
 

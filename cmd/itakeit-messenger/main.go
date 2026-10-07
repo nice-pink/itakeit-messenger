@@ -57,7 +57,7 @@ func run(cfgPath string, debug bool) error {
 	}
 
 	var ask classify.Ask
-	secrets := []string{botToken, appToken, os.Getenv("MESSENGER_HTTP_TOKEN"), os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_AUTH_TOKEN"), os.Getenv("LANGDOCK_API_KEY")}
+	secrets := []string{botToken, appToken, os.Getenv("MESSENGER_HTTP_TOKEN"), os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_AUTH_TOKEN"), os.Getenv("LANGDOCK_API_KEY"), os.Getenv("OPENAI_API_KEY")}
 	switch cfg.Backend {
 	case config.BackendAPI:
 		ask = classify.NewAPI(cfg.Model)
@@ -67,6 +67,12 @@ func run(cfgPath string, debug bool) error {
 			return errors.New("backend langdock needs LANGDOCK_API_KEY")
 		}
 		ask = classify.NewLangdock(cfg.LangdockRegion, cfg.Model, key)
+	case config.BackendOpenAI:
+		key := os.Getenv("OPENAI_API_KEY")
+		if key == "" && cfg.OpenAIBaseURL == config.DefaultOpenAIBaseURL {
+			return errors.New("backend openai needs OPENAI_API_KEY (only a custom openai_base_url may go without)")
+		}
+		ask = classify.NewOpenAI(cfg.OpenAIBaseURL, cfg.Model, key)
 	default:
 		email, err := claudeLogin(ctx, cfg.ClaudeBin, cfg.Env)
 		if err != nil {

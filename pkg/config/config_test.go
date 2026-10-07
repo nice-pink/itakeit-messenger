@@ -27,6 +27,8 @@ func TestParseErrors(t *testing.T) {
 		"recover cap":       {"target_channel: C0123456789\nrecover_messages: 5000\nsources: {stdin: true}", "999"},
 		"token in env":      {"target_channel: C0123456789\nenv: [MESSENGER_SLACK_BOT_TOKEN]\nsources: {stdin: true}", "MESSENGER_SLACK_BOT_TOKEN"},
 		"langdock no model": {"target_channel: C0123456789\nbackend: langdock\nsources: {stdin: true}", "model is required"},
+		"openai no model":   {"target_channel: C0123456789\nbackend: openai\nsources: {stdin: true}", "model is required for backend openai"},
+		"bad base url":      {"target_channel: C0123456789\nbackend: openai\nmodel: m\nopenai_base_url: localhost:8000\nsources: {stdin: true}", "openai_base_url"},
 		"bad region":        {"target_channel: C0123456789\nbackend: langdock\nmodel: m\nlangdock_region: asia\nsources: {stdin: true}", "langdock_region"},
 		"bad timezone":      {"target_channel: C0123456789\ntimezone: Mars/Base\nsources: {stdin: true}", "timezone"},
 		"long knowledge":    {"target_channel: C0123456789\nknowledge: " + strings.Repeat("x", MaxKnowledge+1) + "\nsources: {stdin: true}", "knowledge"},

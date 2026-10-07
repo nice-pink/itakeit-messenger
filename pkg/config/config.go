@@ -6,6 +6,7 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"slices"
@@ -20,7 +21,11 @@ const (
 	BackendClaudeCode = "claude-code"
 	BackendAPI        = "api"
 	BackendLangdock   = "langdock"
+	BackendOpenAI     = "openai"
 )
+
+// DefaultOpenAIBaseURL is where backend openai calls unless openai_base_url says otherwise.
+const DefaultOpenAIBaseURL = "https://api.openai.com/v1"
 
 // MaxKnowledge bounds knowledge, which is part of the system prompt of every call.
 const MaxKnowledge = 8000
@@ -36,6 +41,9 @@ type Config struct {
 	// LangdockRegion is eu or us, the region of the Langdock workspace (backend langdock).
 	LangdockRegion string `yaml:"langdock_region"`
 	Model          string `yaml:"model"`
+	// OpenAIBaseURL is the API root for backend openai: OpenAI by default, or a compatible
+	// server such as vLLM, SGLang or Ollama.
+	OpenAIBaseURL string `yaml:"openai_base_url"`
 	// Criteria extends the built-in definition of a task with what counts in this team.
 	Criteria string `yaml:"criteria"`
 	// Knowledge is background for the model: how to treat kinds of messages (a Grafana
@@ -104,10 +112,11 @@ func Parse(raw []byte) (*Config, error) {
 	c.Backend = cmp.Or(c.Backend, BackendClaudeCode)
 	c.ClaudeBin = cmp.Or(c.ClaudeBin, "claude")
 	c.LangdockRegion = cmp.Or(c.LangdockRegion, "eu")
+	c.OpenAIBaseURL = cmp.Or(c.OpenAIBaseURL, DefaultOpenAIBaseURL)
 	c.Timezone = cmp.Or(c.Timezone, "UTC")
 	c.Sources.HTTP.Listen = cmp.Or(c.Sources.HTTP.Listen, "127.0.0.1:8080")
 	if c.Model == "" {
-		c.Model = map[string]string{BackendClaudeCode: "sonnet", BackendAPI: "claude-sonnet-5-5", BackendLangdock: ""}[c.Backend]
+		c.Model = map[string]string{BackendClaudeCode: "sonnet", BackendAPI: "claude-sonnet-5-5", BackendLangdock: "", BackendOpenAI: ""}[c.Backend]
 	}
 	return &c, c.validate()
 }
@@ -123,11 +132,17 @@ func (c *Config) validate() error {
 	if !c.Tasks && (c.Sources.HTTP.Enabled || c.Sources.Stdin) {
 		errs = append(errs, errors.New("with tasks off only the slack source works: reminders are replies under a Slack message, and http and stdin messages have none"))
 	}
-	if !slices.Contains([]string{BackendClaudeCode, BackendAPI, BackendLangdock}, c.Backend) {
-		errs = append(errs, fmt.Errorf("backend %q: use %s, %s or %s", c.Backend, BackendClaudeCode, BackendAPI, BackendLangdock))
+	if !slices.Contains([]string{BackendClaudeCode, BackendAPI, BackendLangdock, BackendOpenAI}, c.Backend) {
+		errs = append(errs, fmt.Errorf("backend %q: use %s, %s, %s or %s", c.Backend, BackendClaudeCode, BackendAPI, BackendLangdock, BackendOpenAI))
 	}
 	if c.Backend == BackendLangdock && c.Model == "" {
 		errs = append(errs, errors.New("model is required for backend langdock: use a model ID from GET /openai/{region}/v1/models"))
+	}
+	if c.Backend == BackendOpenAI && c.Model == "" {
+		errs = append(errs, errors.New("model is required for backend openai: use a model ID from GET /v1/models"))
+	}
+	if u, err := url.Parse(c.OpenAIBaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		errs = append(errs, fmt.Errorf("openai_base_url %q: use an http(s) URL such as %s", c.OpenAIBaseURL, DefaultOpenAIBaseURL))
 	}
 	if c.LangdockRegion != "eu" && c.LangdockRegion != "us" {
 		errs = append(errs, fmt.Errorf("langdock_region %q: use eu or us", c.LangdockRegion))
@@ -145,7 +160,7 @@ func (c *Config) validate() error {
 		errs = append(errs, errors.New("recover_messages is at most 999: Slack returns one page"))
 	}
 	for _, name := range c.Env {
-		if strings.HasPrefix(name, "MESSENGER_") || name == "ANTHROPIC_API_KEY" || name == "ANTHROPIC_AUTH_TOKEN" || name == "LANGDOCK_API_KEY" {
+		if strings.HasPrefix(name, "MESSENGER_") || name == "ANTHROPIC_API_KEY" || name == "ANTHROPIC_AUTH_TOKEN" || name == "LANGDOCK_API_KEY" || name == "OPENAI_API_KEY" {
 			errs = append(errs, fmt.Errorf("env: %s must not reach the claude CLI (it holds a token, or would make the CLI bill the API instead of using its login)", name))
 		}
 	}

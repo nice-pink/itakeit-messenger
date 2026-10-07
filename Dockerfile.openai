@@ -1,0 +1,20 @@
+FROM cgr.dev/chainguard/go:latest-dev AS builder
+
+LABEL org.opencontainers.image.source="https://github.com/nice-pink/itakeit-messenger"
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 ./build
+
+# For backend: openai only. It calls the OpenAI-compatible chat completions HTTP API (OpenAI, or a self-hosted server such as vLLM via openai_base_url), so the image has no
+# Claude Code CLI and no Node. A config with backend claude-code fails its start
+# probe here, since there is no claude binary. Static carries the CA certificates
+# the Go binary needs for Slack and the model API, and runs as a non-root user.
+FROM cgr.dev/chainguard/static:latest
+
+LABEL org.opencontainers.image.source="https://github.com/nice-pink/itakeit-messenger"
+
+COPY --from=builder /app/bin/itakeit-messenger /app/itakeit-messenger
+ENTRYPOINT [ "/app/itakeit-messenger", "-config", "/config/config.yaml" ]
