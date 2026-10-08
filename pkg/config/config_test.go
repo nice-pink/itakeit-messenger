@@ -13,6 +13,13 @@ func TestParse(t *testing.T) {
 	if c.Backend != BackendClaudeCode || c.Model != "sonnet" || c.MaxParallel != 2 || !c.Reminders || c.Timezone != "UTC" || c.Sources.HTTP.Listen != "127.0.0.1:8080" {
 		t.Fatalf("defaults: %+v", c)
 	}
+	if c.ReasonFirst {
+		t.Fatal("reason_first must default to off")
+	}
+	c, err = Parse([]byte("target_channel: C0123456789\nreason_first: true\nsources:\n  stdin: true\n"))
+	if err != nil || !c.ReasonFirst {
+		t.Fatalf("reason_first: %+v %v", c, err)
+	}
 }
 
 func TestParseErrors(t *testing.T) {

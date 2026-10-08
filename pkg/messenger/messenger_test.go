@@ -141,7 +141,7 @@ func TestSeedStopsRepost(t *testing.T) {
 var due = time.Date(2026, 10, 9, 9, 0, 0, 0, time.UTC)
 
 func remindPipe(v classify.Verdict) (*Pipeline, *fakePoster, *fakeSched) {
-	v.Reminder, v.RemindAt, v.RemindText = true, "2026-10-09T09:00", "send <b>invoice</b>"
+	v.Reminder, v.RemindIn, v.RemindUnit, v.RemindText = true, 7, "days", "send <b>invoice</b>"
 	ask := func(_ context.Context, _, _ string, dest any) error {
 		*dest.(*classify.Verdict) = v
 		return nil

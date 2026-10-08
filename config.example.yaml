@@ -26,6 +26,11 @@ claude_bin: claude
 # Every message that passes min_chars costs one call, so a small model fits.
 # model: sonnet
 
+# true: the model writes its one-sentence reason before it decides. Meant for a small
+# model (a local one, backend openai with openai_base_url); it costs a sentence of output
+# per message, and a large model does not need it.
+# reason_first: false
+
 # What counts as a task in this team, added to the built-in definition. Ignored
 # when tasks is false.
 criteria: |

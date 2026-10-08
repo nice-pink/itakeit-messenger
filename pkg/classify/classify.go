@@ -23,10 +23,18 @@ type Verdict struct {
 	Reason  string `json:"reason" jsonschema_description:"one sentence on why this is or is not a task or reminder"`
 	// The reminder fields are used only when reminders are enabled. A message can be a task, a reminder, both or neither.
 	Reminder   bool   `json:"reminder" jsonschema_description:"true when the message asks to be reminded, or sets a follow-up, at a specific time"`
-	RemindAt   string `json:"remind_at" jsonschema_description:"local time as YYYY-MM-DDTHH:MM in the given timezone; empty when reminder is false"`
 	RemindText string `json:"remind_text" jsonschema_description:"short self-contained text of what to be reminded of; empty when reminder is false"`
 	RemindFor  string `json:"remind_for" jsonschema_description:"Slack user ID the reminder is for: the ID in the from attribute when the sender asks to be reminded (me, I, a follow-up for themselves), or the ID of the user mentioned as <@ID> when the sender asks to remind that person; empty when reminder is false"`
-	// Due is RemindAt parsed and checked by Classify. Reminder is false when the time was unusable.
+	// The time of a reminder is described, not computed: the model copies the phrase into
+	// these fields and when.resolve does the calendar arithmetic (see when.go).
+	RemindIn      int    `json:"remind_in" jsonschema_description:"the distance from now in remind_unit: 2 for in two days, 1 for tomorrow; 0 when the message gives no distance"`
+	RemindUnit    string `json:"remind_unit" jsonschema:"enum=none,enum=minutes,enum=hours,enum=days,enum=weeks,enum=months" jsonschema_description:"unit of remind_in; none when the message gives no distance"`
+	RemindWeekday string `json:"remind_weekday" jsonschema:"enum=none,enum=monday,enum=tuesday,enum=wednesday,enum=thursday,enum=friday,enum=saturday,enum=sunday" jsonschema_description:"the weekday the message names; none when it names none"`
+	RemindWeek    string `json:"remind_week" jsonschema:"enum=none,enum=this_week,enum=next_week" jsonschema_description:"this_week for this Friday, next_week for Friday next week; none otherwise, also for a plain next Friday"`
+	RemindMonth   int    `json:"remind_month" jsonschema_description:"month 1 to 12 of a calendar date the message names, such as 14 November; 0 when it names none"`
+	RemindDay     int    `json:"remind_day" jsonschema_description:"day of the month of that calendar date; 0 when it names none"`
+	RemindTime    string `json:"remind_time" jsonschema_description:"time of day as HH:MM, 24-hour; empty when the message names no time of day"`
+	// Due is the reminder time resolved from the remind_* fields and checked by Classify. Reminder is false when the time was unusable.
 	Due time.Time `json:"-"`
 }
 
@@ -53,7 +61,12 @@ Background knowledge about this team and its tools, written by its operators. Us
 
 	reminderPrompt = `
 
-A message can also contain a reminder: its author asks to be reminded of something, sets a follow-up for themselves, or asks to remind a mentioned person, at a specific time ("remind me on Friday", "ping me tomorrow at 9", "check again in two days"). Set reminder, remind_at and remind_text. The user message gives the current local time and timezone: resolve relative expressions from it and write remind_at as YYYY-MM-DDTHH:MM in that timezone. A date without a time means 09:00. Set remind_for to whom the reminder is for: "me", "I" and a follow-up without a named person mean the sender, whose Slack user ID is the from attribute of the message; "remind @anna" means the user mentioned as <@ID> in the message. Never use an ID that is neither. If the time is vague or missing, set reminder to false: never guess a time. A message can be a task, a reminder, both or neither.`
+A message can also contain a reminder: its author asks to be reminded of something, sets a follow-up for themselves, or asks to remind a mentioned person, at a specific time ("remind me on Friday", "ping me tomorrow at 9", "check again in two days"). Set reminder and remind_text, and describe when with the remind_ fields. Never compute a date yourself: copy what the message says into the fields and a program works out the date. Use one way of naming the day: a distance, or a weekday, or a calendar date, never two of them. Fill only what the message states and leave the rest none, 0 or empty: when the message names a weekday or a date, remind_unit is none and remind_in is 0.
+- remind_in with remind_unit: a distance from now. "in two days" is 2 days, "tomorrow" is 1 days, "in an hour" is 1 hours, "in 30 minutes" is 30 minutes, "in two weeks" is 2 weeks.
+- remind_weekday: a named weekday, "Friday", "next Friday", "Montag". remind_week is this_week for "this Friday" and next_week only when the message says next week ("Friday next week", "next week on Friday"), otherwise none. A plain "next Friday" is friday with remind_week none.
+- remind_month and remind_day: a calendar date without a year, "on 14 November" is month 11 day 14, "15.10." is month 10 day 15.
+- remind_time: the time of day as HH:MM, 24-hour: "9am" is 09:00, "3 pm" is 15:00, "noon" is 12:00, "afternoon" is 15:00, "evening" is 18:00, "end of day" is 17:00. Empty when the message names no time of day: a reminder with a day but no time is sent at 09:00.
+Set remind_for to whom the reminder is for: "me", "I" and a follow-up without a named person mean the sender, whose Slack user ID is the from attribute of the message; "remind @anna" means the user mentioned as <@ID> in the message. Never use an ID that is neither. If the message names no day or time, or only a vague one ("sometime", "later", "when you can"), set reminder to false: never guess a time. A message can be a task, a reminder, both or neither.`
 )
 
 type Classifier struct {
@@ -62,8 +75,10 @@ type Classifier struct {
 	// knowledge is operator-written background, used for tasks and reminders alike.
 	knowledge string
 	noTasks   bool
-	secret    []string
-	loc       *time.Location
+	// reasonFirst puts reason first in the schema, see reason.go.
+	reasonFirst bool
+	secret      []string
+	loc         *time.Location
 	// Now is the clock; tests replace it.
 	Now func() time.Time
 }
@@ -122,10 +137,11 @@ func (c *Classifier) Classify(ctx context.Context, text, author, origin string) 
 		system += reminderPrompt
 		user = fmt.Sprintf("Now: %s %s\n\n%s", now.In(c.loc).Format("2006-01-02T15:04 Monday"), c.loc, user)
 	}
-	var v Verdict
-	if err := c.ask(ctx, system, user, &v); err != nil {
+	dest, result := c.dest()
+	if err := c.ask(ctx, system, user, dest); err != nil {
 		return Verdict{}, err
 	}
+	v := result()
 	c.scrub(&v)
 	v.Title = strings.TrimSpace(strings.Join(strings.Fields(v.Title), " "))
 	v.Summary = strings.TrimSpace(v.Summary)
@@ -171,30 +187,30 @@ func remindFor(id, text, author string) string {
 	return author
 }
 
-// due parses the reminder time into v.Due and reports whether Slack can schedule
+// due resolves the reminder time into v.Due and reports whether Slack can schedule
 // it. An unusable reminder is dropped, not an error: the task, if any, stands.
 func (c *Classifier) due(v *Verdict, now time.Time) bool {
 	v.RemindText = strings.TrimSpace(v.RemindText)
 	if r := []rune(v.RemindText); len(r) > maxRemindRunes {
 		v.RemindText = string(r[:maxRemindRunes-1]) + "…"
 	}
-	t, err := parseTime(v.RemindAt, c.loc)
+	w := v.when()
+	t, err := w.resolve(now, c.loc)
 	if err != nil || v.RemindText == "" || t.Before(now.Add(minLead)) || t.After(now.Add(maxLead)) {
-		slog.Info("reminder dropped", "remind_at", v.RemindAt, "text", v.RemindText)
+		slog.Info("reminder dropped", "when", fmt.Sprintf("%+v", w), "err", err, "text", v.RemindText)
 		return false
 	}
 	v.Due = t
 	return true
 }
 
-// parseTime reads the format the prompt asks for, and the near misses a model
-// produces anyway: seconds, a space for the T, an explicit offset.
-func parseTime(s string, loc *time.Location) (t time.Time, err error) {
-	s = strings.TrimSpace(s)
-	for _, layout := range []string{"2006-01-02T15:04", "2006-01-02T15:04:05", "2006-01-02 15:04", "2006-01-02 15:04:05", time.RFC3339} {
-		if t, err = time.ParseInLocation(layout, s, loc); err == nil {
-			return t, nil
-		}
-	}
-	return t, err
+func (v Verdict) when() when {
+	return when{in: v.RemindIn, unit: v.RemindUnit, weekday: v.RemindWeekday, week: v.RemindWeek, month: v.RemindMonth, day: v.RemindDay, clock: v.RemindTime}
+}
+
+// ClearReminder resets every reminder field, the state of a verdict without one.
+func (v *Verdict) ClearReminder() {
+	v.Reminder, v.RemindText, v.RemindFor = false, "", ""
+	v.RemindIn, v.RemindUnit, v.RemindWeekday, v.RemindWeek = 0, "none", "none", "none"
+	v.RemindMonth, v.RemindDay, v.RemindTime, v.Due = 0, 0, "", time.Time{}
 }

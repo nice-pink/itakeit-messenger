@@ -98,6 +98,9 @@ func run(cfgPath string, debug bool) error {
 	if !cfg.Tasks {
 		cl.WithoutTasks()
 	}
+	if cfg.ReasonFirst {
+		cl.WithReasonFirst()
+	}
 	if cfg.Reminders {
 		loc, _ := time.LoadLocation(cfg.Timezone) // validated by config
 		cl.WithReminders(loc)

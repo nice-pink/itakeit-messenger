@@ -50,6 +50,10 @@ type Config struct {
 	// alert, a form) and how to word the task. Unlike Criteria it also applies when
 	// Tasks is off.
 	Knowledge string `yaml:"knowledge"`
+	// ReasonFirst makes the model write its reason before the verdict. It is meant
+	// for small models, costs a sentence of output per message, and a large model does
+	// not need it.
+	ReasonFirst bool `yaml:"reason_first"`
 	// Env lists extra environment variables the claude CLI may see.
 	Env         []string `yaml:"env"`
 	MaxParallel int      `yaml:"max_parallel"`
