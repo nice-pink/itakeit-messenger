@@ -1,0 +1,49 @@
+# itakeit and itakeit-messenger from the images published to the GitHub
+# registry. Same config and .env files as docker-compose-local.yml: ./config.yaml
+# and ./.env for the messenger, config.yaml and .env in ITAKEIT_DIR (default
+# ../itakeit) for itakeit.
+#
+#   docker compose -f docker-compose-remote.yml up -d
+#   docker compose -f docker-compose-remote.yml pull && docker compose -f docker-compose-remote.yml up -d
+#
+# ITAKEIT_TAG and ITAKEIT_MESSENGER_TAG pick a version (latest follows main;
+# X.Y.Z, X.Y and sha-<short> also exist). With backend langdock or openai, set
+# ITAKEIT_MESSENGER_REPO to ghcr.io/nice-pink/itakeit-messenger-langdock or
+# -openai. Run one instance per Slack app and channel: stop the local compose and
+# any other itakeit (itakeit-agent's compose files run one too) first.
+name: itakeit-messenger-stack
+
+services:
+  itakeit:
+    image: ghcr.io/nice-pink/itakeit:${ITAKEIT_TAG:-latest}
+    restart: unless-stopped
+    env_file: ${ITAKEIT_DIR:-../itakeit}/.env
+    # db_path in config.yaml is relative (itakeit.db), so running in /data puts
+    # the database on the volume. The image's /data belongs to its uid 65532.
+    working_dir: /data
+    volumes:
+      - ${ITAKEIT_DIR:-../itakeit}/config.yaml:/config/config.yaml:ro
+      - itakeit-data:/data
+
+  messenger:
+    image: ${ITAKEIT_MESSENGER_REPO:-ghcr.io/nice-pink/itakeit-messenger}:${ITAKEIT_MESSENGER_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    # The binary writes nothing, but the Claude CLI (default image only) writes its state to HOME and
+    # /tmp on every call. HOME needs mode 0o1777 (YAML octal; see
+    # examples/docker-compose/compose.yaml for why).
+    read_only: true
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - type: tmpfs
+        target: /tmp
+      - type: tmpfs
+        target: /home/node
+        tmpfs:
+          mode: 0o1777
+    # Only for the http source with listen: 0.0.0.0:8080 in config.yaml:
+    # ports:
+    #   - "127.0.0.1:8080:8080"
+
+volumes:
+  itakeit-data:

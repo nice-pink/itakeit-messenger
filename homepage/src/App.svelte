@@ -6,18 +6,19 @@
 
   const features = [
     { title: 'Reads where people write', text: 'Top-level messages from the Slack channels it is in, a POST /messages endpoint for alerts and forms, or lines on standard input. All three go through the same pipeline.' },
-    { title: 'Asks Claude, with no tools', text: 'Each message long enough to matter goes to Claude with no tools, no MCP servers and no settings. A message that tries to steer the model has nothing to act with.' },
-    { title: 'Posts a task that stands alone', text: 'A bold title, a short summary and a link to the original, posted to the itakeit channel. Model text is escaped so it cannot ping @channel, and nobody is mentioned unless mention_author is on.' },
+    { title: 'Asks your AI, with no tools', text: 'Each message long enough to matter goes to your AI, which gets no tools and no access to anything. A message that tries to trick the AI has nothing to act with.' },
+    { title: 'Posts a task that stands alone', text: 'A bold title, a short summary and a link to the original, posted to the itakeit channel. The AI’s text is escaped so it cannot ping @channel, and nobody is mentioned unless mention_author is on.' },
     { title: 'Reminds in the thread', text: '“Remind me on Friday to send the invoice” becomes a scheduled reply under the original message, mentioning who it is for, and a confirmation with a Delete button appears in the thread. Vague times create no reminder.' },
     { title: 'Counts a message once', text: 'Redelivery of the same Slack message or HTTP id is dropped. Each posted task carries a hash of its source key in invisible message metadata.' },
     { title: 'No database', text: 'On start it reads the last messages of the target channel and takes the keys of its own tasks from there, so a restart does not post a task twice.' },
     { title: 'Plugs into itakeit', text: 'It never talks to itakeit. itakeit sees a message like any other, so claims, status and reminders work, and itakeit-agent can pick the task up.' },
-    { title: 'Scrubs what the model writes', text: 'The CLI login email, the Slack and HTTP tokens and the working directory are replaced with [redacted] before anything is posted.' },
+    { title: 'Scrubs what the AI writes', text: 'The CLI login email, the Slack and HTTP tokens and the working directory are replaced with [redacted] before anything is posted.' },
   ]
 
-  let backend = $state<'claude-code' | 'langdock' | 'openai'>('claude-code')
+  let backend = $state<'claude-code' | 'langdock' | 'openai' | 'jev'>('claude-code')
   const langdock = $derived(backend === 'langdock')
   const openai = $derived(backend === 'openai')
+  const jev = $derived(backend === 'jev')
 
   const config = `tasks: true
 target_channel: C0123456789   # the channel itakeit serves (its ID)
@@ -42,7 +43,6 @@ sources:
 
   const run = `docker run -d --name itakeit-messenger --restart unless-stopped -e MESSENGER_SLACK_BOT_TOKEN -e MESSENGER_SLACK_APP_TOKEN -e CLAUDE_CODE_OAUTH_TOKEN -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messenger:latest`
 
-  const build = `git clone https://github.com/nice-pink/itakeit-messenger.git && cd itakeit-messenger && ./build`
 
   const langdockConfig = `backend: langdock
 model: claude-sonnet-4-5     # a model ID from your Langdock workspace
@@ -56,9 +56,17 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
 
   const openaiRun = `docker run -d --name itakeit-messenger --restart unless-stopped -e MESSENGER_SLACK_BOT_TOKEN -e MESSENGER_SLACK_APP_TOKEN -e OPENAI_API_KEY -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messenger-openai:latest`
 
-  const openaiBuild = `git clone https://github.com/nice-pink/itakeit-messenger.git && docker build -f itakeit-messenger/Dockerfile.openai -t itakeit-messenger-openai itakeit-messenger`
 
-  const langdockBuild = `git clone https://github.com/nice-pink/itakeit-messenger.git && docker build -f itakeit-messenger/Dockerfile.langdock -t itakeit-messenger-langdock itakeit-messenger`
+  const jevConfig = `backend: claude-code      # the model that words tasks and reads reminder times
+jev:
+  enabled: true
+  task_threshold: 0.3        # lean low: the model judges again and may veto Jev's yes
+  reminder_threshold: 0.3
+  # trust: true              # Jev's yes is final, then use 0.8 or more
+  # rephrase: false          # post a task as written, no model call for tasks`
+
+  const jevRun = `docker run -d --name itakeit-messenger --restart unless-stopped -e MESSENGER_SLACK_BOT_TOKEN -e MESSENGER_SLACK_APP_TOKEN -e CLAUDE_CODE_OAUTH_TOKEN -e TYPESAFE_API_KEY -v "$PWD/config.yaml:/config/config.yaml:ro" ghcr.io/nice-pink/itakeit-messenger:latest`
+
 
   const curl = `curl -s -H "Authorization: Bearer $MESSENGER_HTTP_TOKEN" -d '{"text":"The nightly export has failed three times, can someone look?","source":"cron"}' http://127.0.0.1:8080/messages`
 
@@ -78,6 +86,7 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
       <li class="badge">claude-code</li>
       <li class="badge">langdock</li>
       <li class="badge">openai</li>
+      <li class="badge">jev</li>
     </ul>
     <nav>
       <a href="#how">How it works</a>
@@ -97,12 +106,12 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
         <img class="bubble" src="./whattodo.png" alt="Just want to know what to do." width="1536" height="1024" />
       </div>
       <h1>The tasks in your messages. <span>Posted to itakeit.</span></h1>
-      <p class="lead"><b>itakeit-messenger</b> reads messages from Slack channels, HTTP and standard input, asks Claude whether each contains a task, and posts the tasks to the channel <a href={itakeit}>itakeit</a> serves. It also sets reminders in the thread when a message asks for one. Nobody has to copy a request into the task channel by hand.</p>
+      <p class="lead"><b>itakeit-messenger</b> reads your Slack messages, and anything you send it over HTTP, and asks your AI whether each one contains a task. Tasks are posted to a dedicated channel, and when someone asks to be reminded, it sets the reminder in the thread. It goes hand in hand with <a href={itakeit}>itakeit</a>, which turns that channel into a task overview with claims and status.<br>With big data volume, or to cut costs and latency, put <a href="#setup">Jev</a> in front of your AI, or let it mostly replace it.</p>
       <div class="cta">
         <a class="btn" href="#setup">Set it up</a>
         <a class="btn ghost" href={repo}>View on GitHub</a>
       </div>
-      <p class="small">Self-hosted. One Docker container, your Claude login, no database.</p>
+      <p class="small">Self-hosted. One Docker container, your own AI, no database.</p>
     </div>
     <div class="demo">
       <Demo />
@@ -128,11 +137,12 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
   <section id="setup" class="wrap setup">
     <h2>Setup</h2>
     <div class="picker" role="radiogroup" aria-label="Model backend">
-      <label class:on={!langdock && !openai}><input type="radio" name="backend" value="claude-code" bind:group={backend} />claude-code</label>
+      <label class:on={!langdock && !openai && !jev}><input type="radio" name="backend" value="claude-code" bind:group={backend} />claude-code</label>
       <label class:on={langdock}><input type="radio" name="backend" value="langdock" bind:group={backend} />langdock</label>
       <label class:on={openai}><input type="radio" name="backend" value="openai" bind:group={backend} />openai</label>
+      <label class:on={jev}><input type="radio" name="backend" value="jev" bind:group={backend} />jev</label>
     </div>
-    <p class="sub">About ten minutes. You need a channel running <a href={itakeit}>itakeit</a>, {#if langdock}a Langdock API key{:else if openai}an OpenAI API key, or your own OpenAI-compatible server{:else}a Claude login{/if}, and a machine that runs Docker.</p>
+    <p class="sub">About ten minutes. You need a Slack channel for the tasks, ideally running <a href={itakeit}>itakeit</a> (it makes the task overview much better, but is not required), {#if langdock}a Langdock API key{:else if openai}an OpenAI API key, or your own OpenAI-compatible server{:else if jev}a TypeSafe API key and e.g. a Claude login{:else}a Claude login{/if}, and a machine that runs Docker.</p>
 
     <ol class="steps">
       <li>
@@ -156,13 +166,20 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
         <h3>Write config.yaml</h3>
         <p>Start from <a href="{repo}/blob/main/config.example.yaml">config.example.yaml</a>. <code>target_channel</code> is the ID of the itakeit channel. <code>criteria</code> sharpens what counts as a task for your team. <code>knowledge</code> is optional background about your tools, such as how to treat a Grafana alert. <code>tasks</code> and <code>reminders</code> switch the two outputs independently; at least one must be on. <code>bot_contact</code> is the Slack user ID a reminder (and, with <code>mention_author</code>, a task) is addressed to when the message comes from a bot, as in itakeit; <code>bot_contacts</code> overrides it per channel ID. Without one, a bot’s message mentions nobody.</p>
         <Code code={config} label="config.yaml" />
-        {#if langdock || openai}
+        {#if jev}
+          <p>Jev runs in front of the AI you already use, here Claude. Add this to the same file.</p>
+          <Code code={jevConfig} label="config.yaml" />
+        {:else if langdock || openai}
           <p>Add the backend keys to the same file.</p>
           <Code code={langdock ? langdockConfig : openaiConfig} label="config.yaml" />
         {/if}
       </li>
       <li>
-        {#if langdock}
+        {#if jev}
+          <h3>Get a TypeSafe API key and log in to Claude</h3>
+          <p>Create an API key at <a href="https://docs.typesafe.ai/introduction">TypeSafe</a> and keep it as <code>TYPESAFE_API_KEY</code>. Jev only answers how likely a message holds a task and how likely it holds a reminder. It writes nothing and reads no dates, so Claude stays the backend: run <code>claude auth login</code>, or keep a <code>claude setup-token</code> token as <code>CLAUDE_CODE_OAUTH_TOKEN</code>.</p>
+          <p><b>How they share the work.</b> Every message goes to Jev first, which only says how likely it is a task or a reminder. Claude is asked only when that likelihood reaches your threshold, so most chat never reaches it, and it still gets no tools. If Jev is unreachable, Claude judges the message itself. With <code>trust: true</code> Jev’s yes is final and Claude only writes the task up. With <code>rephrase: false</code> a task is posted as written with no Claude call, so Jev replaces Claude for tasks. A reminder still calls Claude, because Jev gives a likelihood and not a date. The message text is sent to TypeSafe. Any other backend works the same way.</p>
+        {:else if langdock}
           <h3>Get a Langdock API key</h3>
           <p>Create an API key in your Langdock workspace and keep it as <code>LANGDOCK_API_KEY</code>. Set <code>model</code> to a model ID from the workspace, and <code>langdock_region</code> to <code>eu</code> or <code>us</code> to match it. The messenger calls Langdock’s OpenAI-compatible API, so any model of the workspace works, and refuses to run without the key.</p>
         {:else if openai}
@@ -176,23 +193,23 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
       </li>
       <li>
         <h3>Run the container</h3>
-        {#if langdock || openai}
+        {#if jev}
+          <p>Export the tokens, then start the standard image from the directory with <code>config.yaml</code>. Jev is an HTTPS call, so every image (<code>claude-code</code>, <code>langdock</code>, <code>openai</code>) accepts it with the key of its own backend plus <code>TYPESAFE_API_KEY</code>.</p>
+          <Code code={'export MESSENGER_SLACK_BOT_TOKEN=xoxb-... MESSENGER_SLACK_APP_TOKEN=xapp-... CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-... TYPESAFE_API_KEY=...'} label="shell" />
+          <Code code={jevRun} label="shell" />
+        {:else if langdock || openai}
           <p>Export the tokens, then start the {langdock ? 'Langdock' : 'OpenAI'} image from the directory with <code>config.yaml</code>. It has no Claude Code CLI and no Node, so a config with <code>backend: claude-code</code> fails its start check there.</p>
           <Code code={langdock ? 'export MESSENGER_SLACK_BOT_TOKEN=xoxb-... MESSENGER_SLACK_APP_TOKEN=xapp-... LANGDOCK_API_KEY=...' : 'export MESSENGER_SLACK_BOT_TOKEN=xoxb-... MESSENGER_SLACK_APP_TOKEN=xapp-... OPENAI_API_KEY=...'} label="shell" />
           <Code code={langdock ? langdockRun : openaiRun} label="shell" />
-          <p>Or build the image yourself and run it in place of the image name above:</p>
-          <Code code={langdock ? langdockBuild : openaiBuild} label="shell" />
         {:else}
           <p>Export the tokens, then start the published image from the directory with <code>config.yaml</code>.</p>
           <Code code={'export MESSENGER_SLACK_BOT_TOKEN=xoxb-... MESSENGER_SLACK_APP_TOKEN=xapp-... CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...'} label="shell" />
           <Code code={run} label="shell" />
-          <p>Or build the binary yourself and run <code>bin/itakeit-messenger -config config.yaml</code>:</p>
-          <Code code={build} label="shell" />
         {/if}
       </li>
       <li>
         <h3>Check it</h3>
-        <p>Post a request in a channel it reads, such as “can someone look at the failing export?”. A task appears in the target channel. A setup problem ({#if langdock || openai}API key{:else}login{/if}, config, a channel it cannot read) stops it at startup with an error that names the fix.</p>
+        <p>Post a request in a channel it reads, such as “can someone look at the failing export?”. A task appears in the target channel. A setup problem ({#if langdock || openai || jev}API key{:else}login{/if}, config, a channel it cannot read) stops it at startup with an error that names the fix.</p>
       </li>
     </ol>
 
@@ -204,7 +221,7 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
   <section id="sources" class="band">
     <div class="wrap">
       <h2>Sources</h2>
-      <p class="sub">Every source feeds the same pipeline: length filter, dedupe, Claude, post.</p>
+      <p class="sub">Every source feeds the same pipeline: length filter, dedupe, your AI, post.</p>
       <div class="split">
         <div>
           <p class="scroll-hint">Scroll the table sideways →</p>
@@ -218,7 +235,7 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
               </tbody>
             </table>
           </div>
-          <p class="cost"><b>Cost.</b> Each message that passes <code>min_chars</code> is one model call at low effort with a cached system prompt. Reading every channel of a busy workspace adds up: list <code>channels</code>, or use a small <code>model</code>.</p>
+          <p class="cost"><b>Cost.</b> Each message that passes <code>min_chars</code> is one call to your AI at low effort with a cached system prompt. Reading every channel of a busy workspace adds up: list <code>channels</code>, or use a small <code>model</code>.</p>
         </div>
         <div>
           <p>Send a message from a script, a monitoring hook or a form:</p>
@@ -249,8 +266,8 @@ model: gpt-5.5                # a model ID of your OpenAI account, or of your ow
       <div class="points">
         <p><b>Queue loss.</b> Slack events are acknowledged at once and queued in memory (1024). On shutdown the queue is not drained, and Slack does not redeliver.</p>
         <p><b>Recovery covers tasks only.</b> Messages judged not to be a task are not recorded, so nothing replays them. If more than <code>recover_messages</code> (default 200) messages were posted since a task, a redelivery of its source would post it again.</p>
-        <p><b>Raw IDs.</b> Mentions and links reach the model and the task as Slack’s escaped markup, so a task can show a raw user ID.</p>
-        <p><b>Scrubbing is best effort.</b> Values shorter than 8 characters are not scrubbed, and a model that declines the start-up probe leaves the login email unscrubbed.</p>
+        <p><b>Raw IDs.</b> Mentions and links reach the AI and the task as Slack’s escaped markup, so a task can show a raw user ID.</p>
+        <p><b>Scrubbing is best effort.</b> Values shorter than 8 characters are not scrubbed, and an AI that declines the start-up probe leaves the login email unscrubbed.</p>
       </div>
     </div>
   </section>

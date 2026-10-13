@@ -2,7 +2,7 @@
   type Mode = 'task' | 'reminder' | 'neither'
   type Step = { verdict?: string; post?: { title: string; text: string; from: string }; reminder?: string }
 
-  // One scripted run per kind of message: the messenger reads it, Claude
+  // One scripted run per kind of message: the messenger reads it, the model
   // answers, and the messenger posts the task, schedules the reminder, or does nothing.
   const scripts: Record<Mode, { channel: string; text: string; steps: Step[] }> = {
     task: {
@@ -31,7 +31,7 @@
   const modes: { key: Mode; label: string; note: string }[] = [
     { key: 'task', label: 'task', note: 'A concrete piece of work someone asks for. It is posted to the itakeit channel as a task.' },
     { key: 'reminder', label: 'reminder', note: 'A request to be reminded at a specific time. It is scheduled as a reply in the thread.' },
-    { key: 'neither', label: 'neither', note: 'Everything else is dropped after the model call. No record, no ping.' },
+    { key: 'neither', label: 'neither', note: 'Everything else is dropped after your AI has read it. No record, no ping.' },
   ]
 
   let mode = $state<Mode>('task')
@@ -70,7 +70,7 @@
         <div class="thread" aria-live="polite">
           {#each shown as s, i (i)}
             {#if s.verdict}
-              <p class="tool"><span>the messenger asks Claude, with no tools:</span> <code>{s.verdict}</code></p>
+              <p class="tool"><span>the messenger asks your AI, with no tools:</span> <code>{s.verdict}</code></p>
             {/if}
             {#if s.reminder}
               <div class="msg">

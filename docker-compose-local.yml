@@ -1,0 +1,53 @@
+# itakeit and itakeit-messenger built from local sources: this repo's Dockerfile
+# and the itakeit repo at ITAKEIT_DIR (default ../itakeit, read from ./.env like
+# the other variables here). The messenger reads ./config.yaml and ./.env,
+# itakeit reads its own config.yaml and .env in ITAKEIT_DIR: the two configs
+# have different keys, and the messenger rejects unknown ones.
+#
+#   docker compose -f docker-compose-local.yml up -d --build
+#   docker compose -f docker-compose-local.yml logs -f
+#
+# MESSENGER_DOCKERFILE=Dockerfile.langdock or Dockerfile.openai builds the image
+# for those backends. Run one instance per Slack app and channel: stop any other
+# messenger or itakeit (itakeit-agent's compose files run itakeit too), or every
+# event is handled twice. docker-compose-remote.yml runs the published images.
+name: itakeit-messenger-stack
+
+services:
+  itakeit:
+    build: ${ITAKEIT_DIR:-../itakeit}
+    image: itakeit:local
+    restart: unless-stopped
+    env_file: ${ITAKEIT_DIR:-../itakeit}/.env
+    # db_path in config.yaml is relative (itakeit.db), so running in /data puts
+    # the database on the volume. The image's /data belongs to its uid 65532.
+    working_dir: /data
+    volumes:
+      - ${ITAKEIT_DIR:-../itakeit}/config.yaml:/config/config.yaml:ro
+      - itakeit-data:/data
+
+  messenger:
+    build:
+      context: .
+      dockerfile: ${MESSENGER_DOCKERFILE:-Dockerfile}
+    image: itakeit-messenger:local
+    restart: unless-stopped
+    env_file: .env
+    # The binary writes nothing, but the Claude CLI (default image only) writes its state to HOME and
+    # /tmp on every call. HOME needs mode 0o1777 (YAML octal; see
+    # examples/docker-compose/compose.yaml for why).
+    read_only: true
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - type: tmpfs
+        target: /tmp
+      - type: tmpfs
+        target: /home/node
+        tmpfs:
+          mode: 0o1777
+    # Only for the http source with listen: 0.0.0.0:8080 in config.yaml:
+    # ports:
+    #   - "127.0.0.1:8080:8080"
+
+volumes:
+  itakeit-data:
