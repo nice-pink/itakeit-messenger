@@ -48,6 +48,13 @@ const (
 
 If it is a task, write a title and a summary that stand on their own, because they are posted to a task channel without the original message. Keep the message's language. Plain text, no Markdown headings.`
 
+	// trustTaskPrompt replaces the task definition when the gate has already decided: the model only writes it up.
+	trustTaskPrompt = `A classifier has already decided that this chat message contains a task: a concrete piece of work that someone asks for, or that clearly needs doing by a person. Do not judge that again: always set task to true. Write a title and a summary that stand on their own, because they are posted to a task channel without the original message. Keep the message's language. Plain text, no Markdown headings.`
+
+	trustReminderPrompt = `
+
+A classifier has already decided that this message asks for a reminder: always set reminder to true and fill remind_text. If the message names no usable time, leave the remind_ time fields at none, 0 or empty.`
+
 	noTaskPrompt = `You look for reminders in chat messages. Never treat a message as a task: always set task to false and leave title and summary empty.`
 
 	untrustedPrompt = `
@@ -77,8 +84,16 @@ type Classifier struct {
 	noTasks   bool
 	// reasonFirst puts reason first in the schema, see reason.go.
 	reasonFirst bool
-	secret      []string
-	loc         *time.Location
+	// gate, when set, decides per message which outputs the model is asked for (see jev.go).
+	gate Gate
+	// raw posts a gated task and a reminder's text as the message was written, so the model
+	// is called only to read the time of a reminder, or not at all.
+	raw bool
+	// trust makes a gate verdict final: the model words what the gate accepted instead of judging it again.
+	trust                bool
+	taskMin, reminderMin float64
+	secret               []string
+	loc                  *time.Location
 	// Now is the clock; tests replace it.
 	Now func() time.Time
 }
@@ -123,18 +138,51 @@ func (c *Classifier) Classify(ctx context.Context, text, author, origin string) 
 		text = string([]rune(text)[:maxRunes]) + " [cut]"
 	}
 	user := fmt.Sprintf("<message from=%q origin=%q>\n%s\n</message>", author, origin, text)
+	wantTask, wantRemind := !c.noTasks, c.loc != nil
+	var trustTask, trustRemind, rawTask, rawRemind bool
+	var raw Verdict
+	if c.gate != nil {
+		o, err := c.gate(ctx, text, c.taskDef(), wantTask, wantRemind)
+		if err != nil {
+			slog.Warn("gate failed, asking the model", "err", err)
+		} else {
+			wantTask, wantRemind = wantTask && o.Task >= c.taskMin, wantRemind && o.Reminder >= c.reminderMin
+			trustTask, trustRemind = c.trust && wantTask, c.trust && wantRemind
+			slog.Info("gate scored", "task", o.Task, "reminder", o.Reminder, "ask_task", wantTask, "ask_reminder", wantRemind, "origin", origin)
+			if !wantTask && !wantRemind {
+				return Verdict{Reason: fmt.Sprintf("gate: task %.2f, reminder %.2f, below the thresholds", o.Task, o.Reminder)}, nil
+			}
+			if c.raw {
+				rawTask, rawRemind = wantTask, wantRemind
+				if rawTask {
+					raw = rawTaskVerdict(text)
+					raw.Reason = fmt.Sprintf("gate: task %.2f, posted as written", o.Task)
+					wantTask = false
+				}
+				if !wantRemind {
+					return raw, nil
+				}
+			}
+		}
+	}
 	system, now := taskPrompt, c.Now()
-	if c.noTasks {
+	if !wantTask {
 		system = noTaskPrompt
-	} else if c.criteria != "" {
+	} else if trustTask {
+		system = trustTaskPrompt
+	}
+	if wantTask && !trustTask && c.criteria != "" {
 		system += "\n\nHow this team defines a task:\n" + strings.TrimSpace(c.criteria)
 	}
 	if c.knowledge != "" {
 		system += knowledgePrompt + c.knowledge
 	}
 	system += untrustedPrompt
-	if c.loc != nil {
+	if wantRemind {
 		system += reminderPrompt
+		if trustRemind {
+			system += trustReminderPrompt
+		}
 		user = fmt.Sprintf("Now: %s %s\n\n%s", now.In(c.loc).Format("2006-01-02T15:04 Monday"), c.loc, user)
 	}
 	dest, result := c.dest()
@@ -145,14 +193,43 @@ func (c *Classifier) Classify(ctx context.Context, text, author, origin string) 
 	c.scrub(&v)
 	v.Title = strings.TrimSpace(strings.Join(strings.Fields(v.Title), " "))
 	v.Summary = strings.TrimSpace(v.Summary)
-	v.Task = v.Task && !c.noTasks
+	v.Task = (v.Task || trustTask) && wantTask
 	if v.Task && (v.Title == "" || v.Summary == "") {
 		return Verdict{}, errors.New("model returned a task without title or summary")
 	}
-	v.Reminder = v.Reminder && c.loc != nil && c.due(&v, now)
+	if rawTask {
+		v.Task, v.Title, v.Summary = true, raw.Title, raw.Summary
+	}
+	if rawRemind {
+		v.RemindText = text
+	}
+	v.Reminder = (v.Reminder || trustRemind) && wantRemind && c.due(&v, now)
 	v.RemindFor = remindFor(v.RemindFor, text, author)
 	return v, nil
 }
+
+// rawTaskVerdict is a task made of the message as written, for a classifier without
+// rephrasing: the first line is the title, the whole text the summary.
+func rawTaskVerdict(text string) Verdict {
+	text = strings.TrimSpace(text)
+	title, _, _ := strings.Cut(text, "\n")
+	title = strings.Join(strings.Fields(title), " ")
+	if r := []rune(title); len(r) > maxTitleRunes {
+		title = string(r[:maxTitleRunes-1]) + "…"
+	}
+	if r := []rune(text); len(r) > maxSummaryRunes {
+		text = string(r[:maxSummaryRunes-1]) + "…"
+	}
+	if title == "" {
+		title = "Task"
+	}
+	return Verdict{Task: true, Title: title, Summary: text}
+}
+
+const (
+	maxTitleRunes   = 80
+	maxSummaryRunes = 2000
+)
 
 // schemaOf renders dest's type as the JSON schema both backends send.
 func schemaOf(dest any) (string, error) {

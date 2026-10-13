@@ -57,7 +57,7 @@ func run(cfgPath string, debug bool) error {
 	}
 
 	var ask classify.Ask
-	secrets := []string{botToken, appToken, os.Getenv("MESSENGER_HTTP_TOKEN"), os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_AUTH_TOKEN"), os.Getenv("LANGDOCK_API_KEY"), os.Getenv("OPENAI_API_KEY")}
+	secrets := []string{botToken, appToken, os.Getenv("MESSENGER_HTTP_TOKEN"), os.Getenv("ANTHROPIC_API_KEY"), os.Getenv("ANTHROPIC_AUTH_TOKEN"), os.Getenv("LANGDOCK_API_KEY"), os.Getenv("OPENAI_API_KEY"), os.Getenv("TYPESAFE_API_KEY")}
 	switch cfg.Backend {
 	case config.BackendAPI:
 		ask = classify.NewAPI(cfg.Model)
@@ -82,6 +82,10 @@ func run(cfgPath string, debug bool) error {
 		secrets = append(secrets, classify.EnvSecrets(cfg.Env)...)
 		ask = classify.NewCLI(cfg.ClaudeBin, cfg.Model, cfg.Env)
 	}
+	jevKey := os.Getenv("TYPESAFE_API_KEY")
+	if cfg.Jev.Enabled && jevKey == "" {
+		return errors.New("jev.enabled needs TYPESAFE_API_KEY")
+	}
 	slog.Info("authenticated", "team", auth.Team, "user", auth.UserID, "tasks", cfg.Tasks, "reminders", cfg.Reminders, "target_channel", cfg.TargetChannel, "backend", cfg.Backend, "model", cfg.Model)
 
 	cl := classify.New(ask, cfg.Criteria).WithKnowledge(cfg.Knowledge).WithSecrets(secrets...)
@@ -100,6 +104,13 @@ func run(cfgPath string, debug bool) error {
 	}
 	if cfg.ReasonFirst {
 		cl.WithReasonFirst()
+	}
+	if cfg.Jev.Enabled {
+		cl.WithGate(classify.NewJev(cfg.Jev.URL, cfg.Jev.Model, jevKey), cfg.Jev.TaskThreshold, cfg.Jev.ReminderThreshold, cfg.Jev.Trust)
+		if !cfg.Jev.Rephrase {
+			cl.WithoutRephrase()
+		}
+		slog.Info("jev gate on", "rephrase", cfg.Jev.Rephrase, "model", cfg.Jev.Model, "task_threshold", cfg.Jev.TaskThreshold, "reminder_threshold", cfg.Jev.ReminderThreshold, "trust", cfg.Jev.Trust)
 	}
 	if cfg.Reminders {
 		loc, _ := time.LoadLocation(cfg.Timezone) // validated by config

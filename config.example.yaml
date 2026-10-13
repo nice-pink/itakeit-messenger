@@ -75,6 +75,25 @@ mention_author: false
 # (PATH, HOME, proxies, CLAUDE_CODE_*, ...), never the Slack or HTTP tokens.
 env: []
 
+# TypeSafe's Jev (TYPESAFE_API_KEY) scores each message first: the probability it holds a
+# task and that it holds a reminder. The model above is called, to word the task or
+# reminder, only for an output whose probability reaches its threshold, so most chat
+# never reaches it. Keep thresholds low: a message below one is dropped silently. If Jev
+# fails, the message goes to the model. The text is sent to TypeSafe.
+# jev:
+#   enabled: true
+#   model: jev-latest
+#   task_threshold: 0.3
+#   reminder_threshold: 0.3
+#   # false (default): the model judges again and may veto Jev's yes, so thresholds can be low.
+#   # true: Jev's yes is final, the model only writes the task or reminder up. Then raise the
+#   # thresholds (0.8 or more), since nothing corrects a false yes.
+#   trust: false
+#   # true (default): the model words the task and reminder. false: a task Jev accepts is posted
+#   # as written (first line as title, the text as summary) without a model call, and a
+#   # reminder uses the text as written. A reminder still calls the model, to read its time.
+#   rephrase: true
+
 # Classifications running at the same time.
 max_parallel: 2
 

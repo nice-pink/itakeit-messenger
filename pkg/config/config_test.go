@@ -16,6 +16,9 @@ func TestParse(t *testing.T) {
 	if c.ReasonFirst {
 		t.Fatal("reason_first must default to off")
 	}
+	if c.Jev.Enabled || c.Jev.TaskThreshold != 0.3 || c.Jev.Model != "jev-latest" || c.Jev.URL != DefaultJevURL || !c.Jev.Rephrase {
+		t.Fatalf("jev defaults: %+v", c.Jev)
+	}
 	c, err = Parse([]byte("target_channel: C0123456789\nreason_first: true\nsources:\n  stdin: true\n"))
 	if err != nil || !c.ReasonFirst {
 		t.Fatalf("reason_first: %+v %v", c, err)
@@ -37,6 +40,9 @@ func TestParseErrors(t *testing.T) {
 		"openai no model":   {"target_channel: C0123456789\nbackend: openai\nsources: {stdin: true}", "model is required for backend openai"},
 		"bad base url":      {"target_channel: C0123456789\nbackend: openai\nmodel: m\nopenai_base_url: localhost:8000\nsources: {stdin: true}", "openai_base_url"},
 		"bad region":        {"target_channel: C0123456789\nbackend: langdock\nmodel: m\nlangdock_region: asia\nsources: {stdin: true}", "langdock_region"},
+		"jev threshold":     {"target_channel: C0123456789\njev: {task_threshold: 1.5}\nsources: {stdin: true}", "jev.task_threshold"},
+		"rephrase no jev":   {"target_channel: C0123456789\njev: {rephrase: false}\nsources: {stdin: true}", "jev.rephrase"},
+		"jev url":           {"target_channel: C0123456789\njev: {url: nope}\nsources: {stdin: true}", "jev.url"},
 		"bad timezone":      {"target_channel: C0123456789\ntimezone: Mars/Base\nsources: {stdin: true}", "timezone"},
 		"long knowledge":    {"target_channel: C0123456789\nknowledge: " + strings.Repeat("x", MaxKnowledge+1) + "\nsources: {stdin: true}", "knowledge"},
 		"bad backend":       {"target_channel: C0123456789\nbackend: gpt\nsources: {stdin: true}", "backend"},

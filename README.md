@@ -7,7 +7,7 @@ It is a separate app from both. It needs its own Slack app because itakeit ignor
 ## What it does
 
 1. A source delivers a message: a top-level message in a Slack channel the app is in, a `POST /messages`, or a line on standard input.
-2. Messages shorter than `min_chars` are skipped. Every other message goes to Claude, with no tools, no MCP servers and no settings, so a message that tries to steer the model has nothing to act with.
+2. Messages shorter than `min_chars` are skipped. Every other message goes to the model (or first to the Jev gate below), with no tools, no MCP servers and no settings, so a message that tries to steer the model has nothing to act with.
 3. Claude answers with `task`, `title`, `summary` and `reason` (with `reason_first: true` the reason is written before the verdict, meant for small models; it costs a sentence of output and a large model does not need it). A task is a concrete piece of work someone asks for or that clearly needs doing. `criteria` in the config sharpens that for your team. `knowledge` adds background about your tools, for example that a Grafana alert is a task titled "Check incident: <alert name>".
 4. For a task the messenger posts `*title*`, the summary, and `From <link|a message> in <#channel>` to `target_channel`. The summary stands alone, since the original is not copied. The author is not mentioned, so posting notifies nobody, and model text is escaped so it cannot ping `@channel` or groups. With `mention_author: true` (default false) the task ends with `by @anna`, which pings the author. For a message from a bot it is `bot_contact` (or the channel's `bot_contacts` entry), and nobody is mentioned without one. HTTP and stdin messages have no Slack user to mention. `bot_contact` and `bot_contacts` thus serve reminders and, when on, task mentions.
 
@@ -52,9 +52,15 @@ Adding a source means implementing `messenger.Source` (`Name`, `Run`) and handin
 curl -s -H "Authorization: Bearer $MESSENGER_HTTP_TOKEN" -d '{"text":"The nightly export has failed three times, can someone look?","source":"cron"}' http://127.0.0.1:8080/messages
 ```
 
+## Jev gate
+
+Jev is only an HTTPS request to TypeSafe, so it works in every image (`claude-code`, `langdock` and `openai`) with any backend and needs nothing installed: only the API key.
+
+With `jev.enabled: true` and `TYPESAFE_API_KEY`, every message first goes to [TypeSafe's Jev](https://docs.typesafe.ai/introduction), which returns the probability that it holds a task and that it holds a reminder (one Noul question each, `criteria` and `knowledge` are part of the task question). The model is called only for an output whose probability reaches `jev.task_threshold` or `jev.reminder_threshold` (default 0.3, lean low: the model is the precision stage and a miss is silent). With neither reached the model is not called and nothing is posted. With one reached the model is not asked for the other. With `jev.trust: true` Jev's yes is final instead: the model is told the decision is made and only writes the task or reminder up, so a false yes is posted (a reminder without a usable time is still dropped). Use high thresholds then, 0.8 or more. With `jev.rephrase: false` nothing is reworded: a task Jev accepts is posted as written (first line as the title, the whole text as the summary) with no model call, and a reminder's text is the message as written. A reminder still calls the model, because Jev gives a probability and not a date, so only the time is read by the model. This implies trust for tasks, so use high thresholds. If Jev fails, the message goes to the model as if the gate were off and judges it itself. The message text is sent to TypeSafe. `jev.model` (default `jev-latest`) and `jev.url` can be changed.
+
 ## Cost
 
-Each message that passes `min_chars` is one model call, at low effort and with a cached system prompt. Reading every channel of a busy workspace adds up: list `channels`, or use a small `model`.
+Each message that passes `min_chars` is one model call (one Jev call first with the gate on, and then a model call only above the thresholds), at low effort and with a cached system prompt. Reading every channel of a busy workspace adds up: list `channels`, or use a small `model`.
 
 ## Limits
 

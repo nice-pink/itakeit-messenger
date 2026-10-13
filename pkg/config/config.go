@@ -27,6 +27,9 @@ const (
 // DefaultOpenAIBaseURL is where backend openai calls unless openai_base_url says otherwise.
 const DefaultOpenAIBaseURL = "https://api.openai.com/v1"
 
+// DefaultJevURL is TypeSafe's evaluation endpoint.
+const DefaultJevURL = "https://api.typesafe.ai/v1/systemone"
+
 // MaxKnowledge bounds knowledge, which is part of the system prompt of every call.
 const MaxKnowledge = 8000
 
@@ -54,6 +57,8 @@ type Config struct {
 	// for small models, costs a sentence of output per message, and a large model does
 	// not need it.
 	ReasonFirst bool `yaml:"reason_first"`
+	// Jev puts TypeSafe's Jev model in front of the model as a cheap filter.
+	Jev Jev `yaml:"jev"`
 	// Env lists extra environment variables the claude CLI may see.
 	Env         []string `yaml:"env"`
 	MaxParallel int      `yaml:"max_parallel"`
@@ -73,6 +78,22 @@ type Config struct {
 	// on start to find tasks already posted, at most 999. 0 or negative disables it.
 	RecoverMessages int     `yaml:"recover_messages"`
 	Sources         Sources `yaml:"sources"`
+}
+
+// Jev scores each message with TypeSafe's Jev (TYPESAFE_API_KEY) and calls the model,
+// to word the task or reminder, only for an output whose probability reaches its threshold.
+type Jev struct {
+	Enabled bool   `yaml:"enabled"`
+	Model   string `yaml:"model"`
+	URL     string `yaml:"url"`
+	// TaskThreshold and ReminderThreshold are probabilities from 0 to 1.
+	// Rephrase false posts a gated task, and a reminder's text, as the message was
+	// written instead of the model's wording. A reminder still calls the model for its time.
+	Rephrase bool `yaml:"rephrase"`
+	// Trust makes Jev's yes final: the model only writes the task or reminder up.
+	Trust             bool    `yaml:"trust"`
+	TaskThreshold     float64 `yaml:"task_threshold"`
+	ReminderThreshold float64 `yaml:"reminder_threshold"`
 }
 
 type Sources struct {
@@ -107,7 +128,8 @@ func Load(path string) (*Config, error) {
 }
 
 func Parse(raw []byte) (*Config, error) {
-	c := Config{Tasks: true, Reminders: true, MinChars: 12, RecoverMessages: 200, MaxParallel: 2}
+	c := Config{Tasks: true, Reminders: true, MinChars: 12, RecoverMessages: 200, MaxParallel: 2,
+		Jev: Jev{Rephrase: true, Model: "jev-latest", URL: DefaultJevURL, TaskThreshold: 0.3, ReminderThreshold: 0.3}}
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
 	dec.KnownFields(true)
 	if err := dec.Decode(&c); err != nil {
@@ -157,6 +179,17 @@ func (c *Config) validate() error {
 	if n := utf8.RuneCountInString(c.Knowledge); n > MaxKnowledge {
 		errs = append(errs, fmt.Errorf("knowledge is %d characters, at most %d: it is sent with every message", n, MaxKnowledge))
 	}
+	for name, v := range map[string]float64{"task_threshold": c.Jev.TaskThreshold, "reminder_threshold": c.Jev.ReminderThreshold} {
+		if v < 0 || v > 1 {
+			errs = append(errs, fmt.Errorf("jev.%s %v: use a probability from 0 to 1", name, v))
+		}
+	}
+	if !c.Jev.Rephrase && !c.Jev.Enabled {
+		errs = append(errs, errors.New("jev.rephrase: false needs jev.enabled: without the gate nothing decides what is a task"))
+	}
+	if u, err := url.Parse(c.Jev.URL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		errs = append(errs, fmt.Errorf("jev.url %q: use an http(s) URL such as %s", c.Jev.URL, DefaultJevURL))
+	}
 	if c.MinChars < 0 {
 		errs = append(errs, errors.New("min_chars must not be negative"))
 	}
@@ -164,7 +197,7 @@ func (c *Config) validate() error {
 		errs = append(errs, errors.New("recover_messages is at most 999: Slack returns one page"))
 	}
 	for _, name := range c.Env {
-		if strings.HasPrefix(name, "MESSENGER_") || name == "ANTHROPIC_API_KEY" || name == "ANTHROPIC_AUTH_TOKEN" || name == "LANGDOCK_API_KEY" || name == "OPENAI_API_KEY" {
+		if strings.HasPrefix(name, "MESSENGER_") || name == "ANTHROPIC_API_KEY" || name == "ANTHROPIC_AUTH_TOKEN" || name == "LANGDOCK_API_KEY" || name == "OPENAI_API_KEY" || name == "TYPESAFE_API_KEY" {
 			errs = append(errs, fmt.Errorf("env: %s must not reach the claude CLI (it holds a token, or would make the CLI bill the API instead of using its login)", name))
 		}
 	}
